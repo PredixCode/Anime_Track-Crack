@@ -2,7 +2,7 @@ import time
 
 from AnimeRepository import AnimeRepository
 from MalRequests import Requester
-from AnimeController import AnimeController
+from Controller import AnimeController
 
 from AnimeScrape.AnimeScraper import AnimeScraper
 
