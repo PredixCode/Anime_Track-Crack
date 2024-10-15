@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Anime Season Network</title>
+    <style>
+        body {
+            font-family: "Trebuchet MS", Verdana, Arial, sans-serif;
+            font-size: 16px;
+            background: #2c2c2c;
+            color: #ffffff;
+            padding-top: 60vh
+        }
+        #video-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 999;
+            background-color: #000;
+            transition: all 0.3s ease;
+        }
+
+        #video-player {
+            width: 100%;
+            height: auto;
+            max-height: 60vh; /* Adjust as needed */
+        }
+
+        /* Mini-Player Styles */
+        #video-modal.minimized {
+            width: 300px;
+            height: 170px;
+            bottom: 20px;
+            right: 20px;
+            top: auto;
+            left: auto;
+            background-color: #000;
+        }
+
+        #video-modal.minimized #video-player {
+            width: 100%;
+            height: 100%;
+        }
+
+        #close-modal {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #fff;
+            font-size: 24px;
+            cursor: pointer;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: #39393e54;
+            margin: 15% auto;
+            padding: 20px;
+            width: 71.1%;
+            height: 40%;
+            text-align: center;
+            position: top;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 24px;
+            font-weight: bold;
+            margin-top: -10px;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .lineage-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            padding: 20px;
+        }
+        .anime-lineage {
+            display: flex;
+            flex-direction: row;
+            gap: 10px;
+        }
+        .anime-element {
+            position: relative;
+            padding: 10px;
+            border: 5px solid #ffffff49;
+            border-radius: 5px;
+            background: #444;
+            transition: all 0.3s ease;
+            overflow-x: none;
+        }
+        .anime-element ul p {
+            margin-right: 20px;
+            margin-bottom: 10px;
+            margin-left: -20px;
+            padding: 30px;
+            background: rgba(50, 50, 50, 0.4);
+            border-radius: 10px;
+        }
+        .anime-element ul {
+            font-size: 20px;
+        }
+        .anime-element img {
+            position: relative;
+            margin: 20px;
+            margin-top: 30px;
+            border: 20px solid rgba(50, 50, 50, 0.4); 
+            border-radius: 25px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .anime-element h3 a {
+            font-weight: bold;
+            color:#ffffff;
+            text-decoration: none;
+        }
+        .anime-element h3 a:hover {
+            font-weight: bold;
+            color:#615dd6;
+            text-decoration: none;
+        }
+        .anime-green {
+            background: #4caf4fcf;
+        }
+        .anime-yellow {
+            background: #ffc107c5;
+        }
+        .anime-orange {
+            background: #FF9800;
+        }
+        .anime-red {
+            background: #f44336c3;
+        }
+        .anime-element:hover .anime-info {
+            display: block;
+        }
+        .anime-element:hover .anime-info a  {
+            display: block;
+        }
+        .anime-element.no-color{
+            background: #666;
+        }
+        .anime-info a {
+            display: none;
+            position: relative;
+            color: rgb(218, 220, 255);
+            text-decoration: none;
+            top: 100px;
+            left: 0;
+            font-weight: normal;
+        }
+        .anime-info {
+            display: none;
+            position: absolute;
+            top: 100px;
+            left: 50px;
+            width: 400px;
+            height: 300px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background: #2c2c2c;
+            color: #fff;
+            z-index: 1;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            overflow: auto;
+            overflow-x: none;
+            font-weight: normal;
+        }
+        .anime-element div {
+            margin-top: 20px;
+        }
+        .anime-element a {
+            position: absolut;
+            margin-top: 20px;
+        }
+
+        .content-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .episode-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .episode-button {
+            border-radius: 10%;
+            padding: 15px;
+            margin: 0px;
+            background-color: rgba(50, 50, 50, 0.4);
+            color: #fff;
+            cursor: pointer;
+            border: none;
+            text-align: center;
+            min-width: 80px;
+            min-height: 50px;
+        }
+
+        .episode-button.finished {
+            background-color: rgba(21, 82, 7, 0.4);
+        }
+
+        .episode-button:hover {
+            transition: all 0.3s ease-in-out;
+            background-color: rgba(10, 10, 10, 0.9);
+            margin: 5px;
+        }
+
+        .content-container ul {
+            width: 100%;
+        }
+
+        .content-container ul p {
+            margin: 10px;
+            padding: 10px;
+            background: rgba(50, 50, 50, 0.4);
+            border-radius: 10px;
+        }
+
+        #synopsis {
+            position: relative;
+            width: auto;
+            height: 130px;
+            overflow-y: auto;
+            overflow-x: none;
+            padding: 20px;
+            margin-top: 500px;
+            background: rgb(50,50,50,0.5);
+        }
+        /* New Styles for Filters and Refresh Button */
+        .filters-container {
+            background-color: #2c2c2c;
+            color: #ffffff;
+            padding: 20px;
+            border: 1px solid #ffffff49;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .filters-container h2, .filters-container h3 {
+            margin-top: 0;
+        }
+        .filters-container label {
+            margin-right: 10px;
+        }
+        #apply-filters-button, #refresh-button {
+            background-color: #444;
+            color: #ffffff;
+            border: none;
+            padding: 10px 20px;
+            margin: 10px 5px 0 0;
+            cursor: pointer;
+            font-size: 16px;
+            border-radius: 5px;
+        }
+        #apply-filters-button:hover, #refresh-button:hover {
+            background-color: #615dd6;
+        }
+        /* Adjustments for Input Checkboxes */
+        .filters-container input[type="checkbox"] {
+            margin-right: 5px;
+        }
+    </style>
+
+    <script type="module">
+    // Data caching variables
+    let cachedAnimeData = null;
+    let cachedLineageData = null;
+    let cachedUserListIds = null;
+
+    let selectedMalAnimeId = null;
+    let selectedEpisodeNumber = null;
+    let selectedAnimeTitle = null;
+    
+
+
+    const actionModal = document.getElementById('action-modal');
+    const closeActionModal = document.getElementById('close-action-modal');
+    const actionWatchButton = document.getElementById('action-watch-button');
+    const actionDownloadButton = document.getElementById('action-download-button');
+
+    // Fetching functions
+    async function fetchLineageData() {
+        if (cachedLineageData) {
+            return cachedLineageData;
+        }
+        const response = await fetch('/lineage_data');
+        const lineageData = await response.json();
+        cachedLineageData = lineageData;
+        return lineageData;
+    }
+
+    async function fetchAnimes() {
+        if (cachedAnimeData) {
+            return cachedAnimeData;
+        }
+        const response = await fetch('/animes');
+        const animeData = await response.json();
+        cachedAnimeData = animeData;
+        return animeData;
+    }
+
+    async function fetchUserListAnimes() {
+        if (cachedUserListIds) {
+            return cachedUserListIds;
+        }
+        const response = await fetch('/user_animes');
+        const animeIds = await response.json();
+        cachedUserListIds = animeIds;
+        return animeIds;
+    }
+
+    async function fetchRefreshedAnimeInfo() {
+        await fetch('/refresh_user_list_status');
+    }
+
+    function showActionModal(malAnimeId, episodeNumber, animeTitle) {
+        selectedMalAnimeId = malAnimeId;
+        selectedEpisodeNumber = episodeNumber;
+        selectedAnimeTitle = animeTitle;
+
+        // Update modal text
+        document.getElementById('action-modal-text').innerText = `What do you want to do with Episode ${episodeNumber}?`;
+
+        // Display the modal
+        document.getElementById('action-modal').style.display = 'block';
+    }
+
+    closeActionModal.onclick = function() {
+        actionModal.style.display = 'none';
+    };
+
+    // Close the modal when user clicks outside of it
+    window.onclick = function(event) {
+        if (event.target == actionModal) {
+            actionModal.style.display = 'none';
+        }
+    };
+
+    // Watch Button Event Listener
+    actionWatchButton.onclick = function() {
+        actionModal.style.display = 'none';
+        playAnime(selectedMalAnimeId, selectedEpisodeNumber);
+    };
+
+    // Download Button Event Listener
+    actionDownloadButton.onclick = function() {
+        actionModal.style.display = 'none';
+        downloadAnime(selectedMalAnimeId, selectedEpisodeNumber, selectedAnimeTitle);
+    };
+
+    // DOM building functions
+    function buildAnimeLineageElement(animeObj, colorClass) {
+        var element = document.createElement('div');
+        element.id = animeObj.id;
+        element.className = `anime-element ${colorClass}`;
+
+        let heading = buildAnimeHeading(animeObj);
+        element.appendChild(heading);
+
+        // Build watch status and airing status
+        const watchStatus = document.createElement('ul');
+        if (animeObj.my_list_status && animeObj.my_list_status['status']) {
+            watchStatus.innerText = '•  USER STATUS: ' + animeObj.my_list_status['status'].replace('_', ' ').toUpperCase();
+        } else {
+            watchStatus.innerText = '•  USER STATUS: None';
+        }
+        element.appendChild(watchStatus);
+
+        const animeAiringStatus = document.createElement('ul');
+        if (animeObj.status === 'finished_airing') {
+            animeAiringStatus.innerText = '•  AIRING STATUS: ' + animeObj.status.replace('_', ' ').toUpperCase() + ' in ' + animeObj.start_season['year'] + ', ' + animeObj.start_season['season'].toUpperCase();
+        } else if (animeObj.status === "not_yet_aired") {
+            animeAiringStatus.innerText = '•  AIRING STATUS: Not yet aired';
+        } else if (animeObj.status === "currently_airing") {
+            animeAiringStatus.innerText = '•  AIRING STATUS: Currently Airing';
+        }
+        element.appendChild(animeAiringStatus);
+
+        // Create a content container
+        const contentContainer = document.createElement('div');
+        contentContainer.className = 'content-container';
+
+        // Add cover image
+        const animeImage = document.createElement('img');
+        animeImage.id = animeObj.id + "-image";
+        animeImage.src = animeObj.main_picture['large'];
+        animeImage.alt = "Cover image from the anime: " + animeObj.title;
+        animeImage.style.display = "none";
+        contentContainer.appendChild(animeImage);
+
+        // Create a container for episode buttons
+        const episodeContainer = document.createElement('div');
+        episodeContainer.className = 'episode-container';
+
+        // Determine the number of episodes
+        const numEpisodes = animeObj.num_episodes && animeObj.num_episodes > 0 ? animeObj.num_episodes : 12; // Default to 12
+
+        // Determine amount, user has watched
+        let userNumEpisodes = animeObj.my_list_status['num_episodes_watched']
+
+        for (let episode = 1; episode <= numEpisodes; episode++) {
+            // Create a button for each episode
+            const episodeButton = document.createElement('button');
+            episodeButton.innerText = `Episode ${episode}`;
+
+            if (userNumEpisodes > 0) {
+                episodeButton.className = 'episode-button finished';
+            } else {
+                episodeButton.className = 'episode-button';
+            }
+            episodeButton.dataset.malAnimeId = animeObj.id;
+            episodeButton.dataset.episodeNumber = episode;
+
+            // Add event listener for the episode button
+            episodeButton.addEventListener('click', function(event) {
+                event.stopPropagation();
+                const malAnimeId = event.currentTarget.dataset.malAnimeId;
+                const episodeNumber = event.currentTarget.dataset.episodeNumber;
+
+                // Show the action modal
+                showActionModal(malAnimeId, episodeNumber, animeObj.title);
+            });
+
+            episodeContainer.appendChild(episodeButton);
+            userNumEpisodes--;
+        }
+
+        // Hide episodeContainer initially
+        episodeContainer.style.display = "none";
+
+        contentContainer.appendChild(episodeContainer);
+
+        // Add description
+        const descriptionContainer = document.createElement('ul');
+        const animeDescription = document.createElement('p');
+        animeDescription.id = animeObj.id + "-description";
+        animeDescription.textContent = `SYNOPSIS: \n${animeObj.synopsis}`;
+        animeDescription.style.display = "none";
+        descriptionContainer.appendChild(animeDescription);
+        contentContainer.appendChild(descriptionContainer);
+
+        element.appendChild(contentContainer);
+
+        // Update element onclick function to toggle display
+        const boxHeight = '80px';
+        element.onclick = function() {
+            var animeElement = document.getElementById(element.id);
+            var animeImage = document.getElementById(animeElement.id + "-image");
+            var animeDescription = document.getElementById(animeElement.id + "-description");
+
+            if (animeElement.style.height === boxHeight || animeElement.style.width === undefined) {
+                animeElement.style.width = '600px';
+                animeElement.style.height = 'auto';
+                animeElement.style.overflow = "auto";
+                animeImage.style.display = "block";
+                animeDescription.style.display = "block";
+                episodeContainer.style.display = "flex"; // Show episode buttons
+            } else {
+                animeElement.style.width = 'auto';
+                animeElement.style.height = boxHeight;
+                animeElement.style.overflow = "hidden";
+                animeImage.style.display = "none";
+                animeDescription.style.display = "none";
+                episodeContainer.style.display = "none"; // Hide episode buttons
+            }
+        };
+        element.style.width = 'auto';
+        element.style.height = boxHeight;
+        element.style.overflow = "hidden";
+
+        return element;
+    }
+
+
+
+    function buildAnimeHeading(animeObj) {
+        const titleHeading = document.createElement('h3');
+        const malLinkElement = document.createElement('a');
+        malLinkElement.innerText = tryGetEnglishTitles(animeObj);
+
+        try {
+            if (animeObj.my_list_status && parseInt(animeObj.my_list_status['score']) !== 0) {
+                malLinkElement.innerText = tryGetEnglishTitles(animeObj) + " (" + animeObj.my_list_status['score'] + ")";
+            }
+        } catch (e) {
+            // Ignore errors
+        }
+
+        malLinkElement.href = animeObj.mal_url;
+        titleHeading.appendChild(malLinkElement);
+        return titleHeading;
+    }
+
+    function tryGetEnglishTitles(animeObj) {
+        try {
+            if (animeObj.alternative_titles['en']) {
+                return animeObj.alternative_titles['en'] || animeObj.title;
+            } else {
+                return animeObj.title;
+            }
+        } catch (e) {
+            return animeObj.title;
+        }
+    }
+
+    function buildExpandedBoxAnimeInfoElements(animeObj, element, colorClass) {
+        const watchStatus = document.createElement('ul');
+        if (animeObj.my_list_status && animeObj.my_list_status['status']) {
+            watchStatus.innerText = '•  USER STATUS: ' + animeObj.my_list_status['status'].replace('_', ' ').toUpperCase();
+        } else {
+            watchStatus.innerText = '•  USER STATUS: None';
+        }
+        element.appendChild(watchStatus);
+
+        const animeAiringStatus = document.createElement('ul');
+        if (animeObj.status === 'finished_airing') {
+            animeAiringStatus.innerText = '•  AIRING STATUS: ' + animeObj.status.replace('_', ' ').toUpperCase() + ' in ' + animeObj.start_season['year'] + ', ' + animeObj.start_season['season'].toUpperCase();
+        } else if (animeObj.status === "not_yet_aired") {
+            animeAiringStatus.innerText = '•  AIRING STATUS: Not yet aired';
+        } else if (animeObj.status === "currently_airing") {
+            animeAiringStatus.innerText = '•  AIRING STATUS: Currently Airing';
+        }
+        element.appendChild(animeAiringStatus);
+
+        const animeImage = document.createElement('img');
+        animeImage.id = animeObj.id + "-image";
+        animeImage.src = animeObj.main_picture['large'];
+        animeImage.alt = "Cover image from the anime: " + animeObj.title;
+        animeImage.style.display = "none";
+        element.appendChild(animeImage);
+
+        const descriptionContainer = document.createElement('ul');
+        const animeDescription = document.createElement('p');
+        animeDescription.id = animeObj.id + "-description";
+        animeDescription.textContent = `SYNOPSIS: \n${animeObj.synopsis}`;
+        animeDescription.style.display = "none";
+        descriptionContainer.appendChild(animeDescription);
+        element.appendChild(descriptionContainer);
+        return element;
+    }
+
+    // Main parsing and rendering functions
+    function parseAnimeData(lineageData, selectedWatchStatuses, selectedAiringStatuses) {
+        const animeData = cachedAnimeData;
+        for (const originAnimeId in lineageData) {
+            const animeLineageList = lineageData[originAnimeId];
+            cycleThroughLineages(originAnimeId, animeLineageList, animeData, selectedWatchStatuses, selectedAiringStatuses);
+        }
+
+        // ADD WATCH VIDEO ELEMENT
+        addWatchButtonEventListeners();
+    }
+
+    function cycleThroughLineages(originAnimeId, animeLineageList, animeData, selectedWatchStatuses, selectedAiringStatuses) {
+        const lineageContainer = document.getElementById('lineage');
+        const lineageDiv = document.createElement('div');
+        lineageDiv.className = 'anime-lineage';
+
+        animeLineageList.forEach((lineageAnimeId) => {
+            const lineageAnimeObj = animeData[lineageAnimeId];
+
+            // Apply filters
+            const watchStatus = (lineageAnimeObj.my_list_status && lineageAnimeObj.my_list_status.status) || 'not_in_list';
+            const airingStatus = lineageAnimeObj.status || 'unknown';
+
+            const isWatchStatusSelected = selectedWatchStatuses.includes(watchStatus);
+            const isAiringStatusSelected = selectedAiringStatuses.includes(airingStatus);
+
+            if (!isWatchStatusSelected || !isAiringStatusSelected) {
+                return; // Skip this anime as it doesn't match the filters
+            }
+
+            // Determine colorClass based on watch status
+            let colorClass = 'anime-red'; // Default color
+            if (lineageAnimeObj.my_list_status) { 
+                switch (lineageAnimeObj.my_list_status['status']) {
+                    case 'completed':
+                        colorClass = 'anime-green';
+                        break;
+                    case 'watching':
+                        colorClass = 'anime-yellow';
+                        break;
+                    case 'plan_to_watch':
+                        colorClass = 'anime-orange';
+                        break;
+                    default:
+                        colorClass = 'anime-red';
+                }
+            }
+
+            const animeElement = buildAnimeLineageElement(lineageAnimeObj, colorClass);
+            lineageDiv.appendChild(animeElement);
+        });
+
+        lineageContainer.appendChild(lineageDiv);
+    }
+
+    // Event handlers
+    async function applyFilters() {
+        // Get the selected filters
+        const watchStatusCheckboxes = document.querySelectorAll('input[name="watch_status"]:checked');
+        const airingStatusCheckboxes = document.querySelectorAll('input[name="airing_status"]:checked');
+
+        const selectedWatchStatuses = Array.from(watchStatusCheckboxes).map(cb => cb.value);
+        const selectedAiringStatuses = Array.from(airingStatusCheckboxes).map(cb => cb.value);
+
+        // Clear existing lineage elements
+        document.getElementById('lineage').innerHTML = '';
+
+        // Re-render the animes with filters
+        parseAnimeData(cachedLineageData, selectedWatchStatuses, selectedAiringStatuses);
+    }
+
+    // Event handler for the Refresh button
+    document.getElementById('refresh-button').addEventListener('click', async function() {
+        await fetchRefreshedAnimeInfo();
+        // Re-fetch data
+        cachedAnimeData = await fetchAnimes();
+        cachedUserListIds = await fetchUserListAnimes();
+        // Re-apply filters
+        applyFilters();
+        location.reload();
+        console.log('Refreshing User List Status Successful')
+    });
+
+
+    // VIDEO MODE FUNCTIONS:
+    function addWatchButtonEventListeners() {
+        const watchButtons = document.querySelectorAll('.watch-button');
+        watchButtons.forEach(button => {
+            button.addEventListener('click', function(event) {
+                event.stopPropagation();  // Prevent triggering parent click events
+                const malAnimeId = button.dataset.malAnimeId;
+                const episodeNumber = 1;  // Set the desired episode number
+                playAnime(malAnimeId, episodeNumber);
+            });
+        });
+    }
+
+    function playAnime(malAnimeId, episodeNumber) {
+    const video = document.getElementById('video-player');
+    const videoSrc = `/watch_anime/${malAnimeId}/${episodeNumber}`;
+    
+    // Display the video modal
+    document.getElementById('video-modal').style.display = 'block';
+
+    // Function to show a popup for errors
+    function showErrorPopup(message) {
+        const popup = document.createElement('div');
+        popup.style.position = 'fixed';
+        popup.style.top = '20px';
+        popup.style.left = '50%';
+        popup.style.transform = 'translateX(-50%)';
+        popup.style.padding = '20px';
+        popup.style.backgroundColor = '#f44336';
+        popup.style.color = 'white';
+        popup.style.borderRadius = '5px';
+        popup.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.2)';
+        popup.innerText = message;
+
+        document.body.appendChild(popup);
+
+        setTimeout(() => {
+            popup.remove();
+        }, 5000);
+    }
+
+    // Check if the video source is available
+    fetch(videoSrc)
+        .then(response => {
+            if (!response.ok) {
+                if (response.status === 404) {
+                    showErrorPopup("404 Error: Video not found.");
+                } else if (response.status === 500) {
+                    showErrorPopup("500 Error: Internal server error. Please try again later.");
+                }
+                // Hide the modal if there's an error
+                document.getElementById('video-modal').style.display = 'none';
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+
+            // Proceed with loading the video if no errors
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(videoSrc);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                    video.play();
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // For Safari and iOS
+                video.src = videoSrc;
+                video.addEventListener('loadedmetadata', function() {
+                    video.play();
+                });
+            } else {
+                showErrorPopup('Your browser does not support HLS streaming.');
+            }
+        })
+        .catch(error => {
+            console.error('Error fetching video:', error);
+        });
+    }
+
+
+
+
+    async function downloadAnime(malAnimeId, episodeNumber, animeTitle) {
+        const response = await fetch(`/download_anime/${malAnimeId}/${episodeNumber}`);
+        if (response.ok) {
+            alert(`Successfully started downloading: ${animeTitle} Episode ${episodeNumber}`);
+        } else {
+            alert(`Failed to download: ${animeTitle} Episode ${episodeNumber}`);
+        }
+    }
+
+
+    // Close the modal when the user clicks on <span> (x)
+    document.getElementById('close-modal').onclick = function() {
+        const video = document.getElementById('video-player');
+        video.pause();
+        video.src = '';
+        document.getElementById('video-modal').style.display = 'none';
+    };
+
+    // Minimize the video player on scroll
+    window.addEventListener('scroll', function() {
+        const videoModal = document.getElementById('video-modal');
+        if (!videoModal) return;
+
+        const scrollThreshold = 200; // Adjust as needed
+        if (window.scrollY > scrollThreshold) {
+            videoModal.classList.add('minimized');
+        } else {
+            videoModal.classList.remove('minimized');
+        }
+    });
+
+    // Close the video player
+    document.getElementById('close-modal').onclick = function() {
+        const video = document.getElementById('video-player');
+        video.pause();
+        video.src = '';
+        document.getElementById('video-modal').style.display = 'none';
+    };
+
+
+    // Initial setup
+    window.onload = async function() {
+        cachedLineageData = await fetchLineageData();
+        cachedAnimeData = await fetchAnimes();
+        cachedUserListIds = await fetchUserListAnimes();
+
+        const watchStatusCheckboxes = document.querySelectorAll('input[name="watch_status"]:checked');
+        const airingStatusCheckboxes = document.querySelectorAll('input[name="airing_status"]:checked');
+
+        const selectedWatchStatuses = Array.from(watchStatusCheckboxes).map(cb => cb.value);
+        const selectedAiringStatuses = Array.from(airingStatusCheckboxes).map(cb => cb.value);
+
+        parseAnimeData(cachedLineageData, selectedWatchStatuses, selectedAiringStatuses);
+        reloads++;
+        console.log('Page reloads:',reloads)
+    };
+
+    // Event listener for the Apply Filters button
+    document.getElementById('apply-filters-button').addEventListener('click', applyFilters);
+    </script>
+
+</head>
+<body>
+    <h1>Anime Season Network</h1>
+    <button id="refresh-button">Refresh User List Status</button>
+    <div id="filters" class="filters-container">
+        <h2>Filter Options</h2>
+        <div>
+            <h3>Watch Status</h3>
+            <input type="checkbox" id="completed" name="watch_status" value="completed" checked>
+            <label for="completed">Completed</label>
+            <input type="checkbox" id="plan_to_watch" name="watch_status" value="plan_to_watch" checked>
+            <label for="plan_to_watch">Plan to Watch</label>
+            <input type="checkbox" id="on_hold" name="watch_status" value="on_hold" checked>
+            <label for="on_hold">On Hold</label>
+            <input type="checkbox" id="dropped" name="watch_status" value="dropped" checked>
+            <label for="dropped">Dropped</label>
+            <input type="checkbox" id="watching" name="watch_status" value="watching" checked>
+            <label for="watching">Watching</label>
+        </div>
+        <div>
+            <h3>Airing Status</h3>
+            <input type="checkbox" id="finished_airing" name="airing_status" value="finished_airing" checked>
+            <label for="finished_airing">Finished Airing</label>
+            <input type="checkbox" id="not_yet_aired" name="airing_status" value="not_yet_aired" checked>
+            <label for="not_yet_aired">Not Yet Aired</label>
+            <input type="checkbox" id="currently_airing" name="airing_status" value="currently_airing" checked>
+            <label for="currently_airing">Currently Airing</label>
+        </div>
+        <button id="apply-filters-button">Apply Filters</button>
+    </div>
+
+    <!-- Video Player Modal -->
+    <div id="video-modal" style="display: none;">
+        <span id="close-modal" class="close">&times;</span>
+        <video id="video-player" controls></video>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+
+    <!-- Action Modal -->
+    <div id="action-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-action-modal" class="close">&times;</span>
+            <p id="action-modal-text"></p>
+            <button id="action-watch-button">Watch</button>
+            <button id="action-download-button">Download</button>
+        </div>
+    </div>
+    
+
+
+    <div id="lineage" class="lineage-container"></div>
+</body>
+</html>
