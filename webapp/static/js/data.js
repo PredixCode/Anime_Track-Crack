@@ -18,5 +18,5 @@ export async function fetchAnimes() {
 
 export async function refreshUserData() {
     await fetch('/refresh_user_list_status');
-    cachedAnimeData = null; // Reset cache
+    console.log('refreshed MAL user list data, 1 API call made')
 }

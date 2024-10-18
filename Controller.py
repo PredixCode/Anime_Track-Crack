@@ -31,8 +31,6 @@ class AnimeController:
 
         # Open the web browser
         time.sleep(1)
-        webbrowser.open_new('http://127.0.0.1:5000/refresh_user_list_status')
-        time.sleep(2)
         webbrowser.open_new('http://127.0.0.1:5000/')
 
     def proxy_ts_segment(self, segment_url):
@@ -86,8 +84,7 @@ class AnimeController:
         def refresh_user_list_status():
             try:
                 self.requester.get_user_anime_list()
-                print("REFRESHED USER LIST AND USER LIST STATUS")
-                return "SUCCESSFUL"
+                return "SUCCESSFUL", 200
 
             except Exception as e:
                 logging.error(f"Error rendering template: {e}")

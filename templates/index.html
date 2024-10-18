@@ -8,46 +8,47 @@
     <script type="module" src="{{ url_for('static', filename='js/main.js') }}"></script>
 </head>
 <body>
-    <header>
-        <h1>Anime Season Network</h1>
-        <button id="refresh-button">Refresh User List Status</button>
-    </header>
-
-    <section id="filters" class="filters-container">
-        <h2>Filter Options</h2>
-        <div class="filter-group">
-            <h3>Watch Status</h3>
-            <label><input type="checkbox" name="watch_status" value="completed" checked> Completed</label>
-            <label><input type="checkbox" name="watch_status" value="plan_to_watch" checked> Plan to Watch</label>
-            <label><input type="checkbox" name="watch_status" value="on_hold" checked> On Hold</label>
-            <label><input type="checkbox" name="watch_status" value="dropped" checked> Dropped</label>
-            <label><input type="checkbox" name="watch_status" value="watching" checked> Watching</label>
-        </div>
-        <div class="filter-group">
-            <h3>Airing Status</h3>
-            <label><input type="checkbox" name="airing_status" value="finished_airing" checked> Finished Airing</label>
-            <label><input type="checkbox" name="airing_status" value="not_yet_aired" checked> Not Yet Aired</label>
-            <label><input type="checkbox" name="airing_status" value="currently_airing" checked> Currently Airing</label>
-        </div>
-        <button id="apply-filters-button">Apply Filters</button>
-    </section>
-
-    <main id="lineage" class="lineage-container"></main>
-
     <!-- Video Player Modal -->
     <div id="video-modal" class="modal" style="display: none;">
         <span id="close-modal" class="close">&times;</span>
         <video id="video-player" controls></video>
     </div>
 
-    <!-- Action Modal -->
-    <div id="action-modal" class="modal">
-        <div class="modal-content">
-            <span id="close-action-modal" class="close">&times;</span>
-            <p id="action-modal-text"></p>
-            <button id="action-watch-button">Watch</button>
-            <button id="action-download-button">Download</button>
-        </div>
+    <!-- Main Content Wrapper -->
+    <div class="main-content">
+        <header>
+            <h1>Anime Season Network</h1>
+        </header>
+
+        <section id="filters" class="filters-container">
+            <h2>Filter Options</h2>
+            <div class="filter-group">
+                <h3>Watch Status</h3>
+                <label><input type="checkbox" name="watch_status" value="completed" checked> Completed</label>
+                <label><input type="checkbox" name="watch_status" value="plan_to_watch" checked> Plan to Watch</label>
+                <label><input type="checkbox" name="watch_status" value="on_hold" checked> On Hold</label>
+                <label><input type="checkbox" name="watch_status" value="dropped" checked> Dropped</label>
+                <label><input type="checkbox" name="watch_status" value="watching" checked> Watching</label>
+            </div>
+            <div class="filter-group">
+                <h3>Airing Status</h3>
+                <label><input type="checkbox" name="airing_status" value="finished_airing" checked> Finished Airing</label>
+                <label><input type="checkbox" name="airing_status" value="not_yet_aired" checked> Not Yet Aired</label>
+                <label><input type="checkbox" name="airing_status" value="currently_airing" checked> Currently Airing</label>
+            </div>
+        </section>
+
+        <main id="lineage" class="lineage-container"></main>
+
+        <!-- Action Modal -->
+        <div id="action-modal" class="modal">
+            <div class="modal-content">
+                <span id="close-action-modal" class="close">&times;</span>
+                <p id="action-modal-text"></p>
+                <button id="action-watch-button">Watch</button>
+                <button id="action-download-button">Download</button>
+            </div>
+        </div>#
     </div>
 </body>
 </html>

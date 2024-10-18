@@ -306,6 +306,16 @@ a {
     z-index: 1002;
 }
 
+/* Adjust the main content when in cinema mode */
+.cinema-mode-active .main-content {
+    padding-top: 60vh; /* Match the height of the cinema-mode video player */
+}
+
+.cinema-mode-active #video-modal {
+    margin-top: 0;
+}
+
+
 /* Media Queries */
 @media screen and (max-width: 768px) {
     .anime-element {

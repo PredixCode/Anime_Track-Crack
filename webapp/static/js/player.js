@@ -11,9 +11,15 @@ export function playAnime(malAnimeId, episodeNumber) {
     if (window.scrollY <= 200) {
         videoModal.classList.add('cinema-mode');
         videoModal.classList.remove('minimized');
+
+        // Add cinema mode class to body
+        document.body.classList.add('cinema-mode-active');
     } else {
         videoModal.classList.add('minimized');
         videoModal.classList.remove('cinema-mode');
+
+        // Ensure cinema mode class is removed from body
+        document.body.classList.remove('cinema-mode-active');
     }
 
     fetch(videoSrc)

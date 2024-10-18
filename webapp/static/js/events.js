@@ -1,5 +1,4 @@
 // events.js
-import { refreshUserData } from './data.js';
 import { applyFilters } from './filters.js';
 import { playAnime, downloadAnime } from './player.js';
 
@@ -8,12 +7,11 @@ let selectedEpisodeNumber = null;
 let selectedAnimeTitle = null;
 
 export function addEventListeners() {
-    document.getElementById('refresh-button').addEventListener('click', async () => {
-        await refreshUserData();
-        applyFilters();
+    // Apply filters immediately when checkboxes change
+    const filterCheckboxes = document.querySelectorAll('input[name="watch_status"], input[name="airing_status"]');
+    filterCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', applyFilters);
     });
-
-    document.getElementById('apply-filters-button').addEventListener('click', applyFilters);
 
     // Video Modal Close
     document.getElementById('close-modal').addEventListener('click', closeVideoModal);
@@ -55,7 +53,10 @@ function closeVideoModal() {
     video.src = '';
     const videoModal = document.getElementById('video-modal');
     videoModal.style.display = 'none';
-    videoModal.classList.remove('cinema-mode', 'minimized'); // Remove classes when closing
+    videoModal.classList.remove('cinema-mode', 'minimized');
+
+    // Remove cinema mode class from body
+    document.body.classList.remove('cinema-mode-active');
 }
 
 function toggleVideoMinimize() {
@@ -67,9 +68,16 @@ function toggleVideoMinimize() {
         // Switch to mini-player mode
         videoModal.classList.add('minimized');
         videoModal.classList.remove('cinema-mode');
+
+        // Remove cinema mode class from body
+        document.body.classList.remove('cinema-mode-active');
     } else {
         // Switch to cinema mode
         videoModal.classList.add('cinema-mode');
         videoModal.classList.remove('minimized');
+
+        // Add cinema mode class to body
+        document.body.classList.add('cinema-mode-active');
     }
 }
+
