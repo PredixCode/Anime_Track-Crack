@@ -122,6 +122,12 @@ class AnimeController:
                 video_source_url = self.scraper.get_video_source_url_selenium(anime_id, episode_number)
                 if not video_source_url:
                     return "Video source URL not found", 404
+                
+                # Compare episode number to requested episode number
+                actual_ep = self.scraper.extract_episode_from_video_url(video_source_url)
+                if  int(actual_ep) - int(episode_number) != 0:
+                    print(f'FOUND: EP{actual_ep}, BUT EXPECTED: EP{episode_number}')
+                    return f"Requested episode {episode_number} not found, could only find episode: {actual_ep}.\n If the episode found is the previous of the requested episode,\n then the anime is still airing and the episode not available yet", 417
 
 
                 # Get the highest resolution m3u8 URL

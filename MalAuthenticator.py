@@ -1,4 +1,5 @@
 import os
+import time
 import base64
 import requests
 import webbrowser
@@ -6,6 +7,7 @@ import json
 import threading
 
 from datetime import datetime, timedelta
+from werkzeug.serving import make_server
 from flask import Flask, request as flaskRequest
 
 class TokenGenerator:
@@ -90,14 +92,13 @@ class TokenGenerator:
                 if 'error' not in token:
                     self.save_token(token)
                     self.stop_event.set()  # Signal to stop the server
-                    return 'Token obtained and saved. You can close this window now.'
+                    return 'Token obtained and saved. You can close this window now.', 200
                 else:
-                    return 'Failed to obtain token.'
+                    return 'Failed to obtain token.', 500
             else:
-                return 'Authorization failed.'
+                return 'Authorization failed.', 500
 
     def run(self):
-        from werkzeug.serving import make_server
 
         def run_flask():
             self.server = make_server('localhost', 5000, self.app)
@@ -123,18 +124,26 @@ class TokenLoader:
         self.load_tokens()
         self.ensure_valid_tokens()
 
-    def load_tokens(self):
+    def load_tokens(self, attemps_made=0):
         try:
             with open(self.tokens_path, 'r') as file:
                 tokens = json.load(file)
         except FileNotFoundError as e:
-            self.refresh_tokens()
+            if attemps_made == 0 or attemps_made == 30:
+                tokens = self.refresh_tokens()
 
-        self.access_token = tokens.get('access_token')
-        self.refresh_token = tokens.get('refresh_token')
+        if tokens != None:
+            self.access_token = tokens.get('access_token')
+            self.refresh_token = tokens.get('refresh_token')
 
-        self.token_creation_time = self.get_access_token_creation_time(self.tokens_path)
-        self.expires_at = self.token_creation_time + timedelta(seconds=tokens.get('expires_in'))
+            self.token_creation_time = self.get_access_token_creation_time(self.tokens_path)
+            self.expires_at = self.token_creation_time + timedelta(seconds=tokens.get('expires_in'))
+        else:
+            if attemps_made < 30:
+                time.sleep(30)
+                self.load_tokens(attemps_made+1)
+            else:
+                quit("Error loading tokens, retry later...")
 
     def get_access_token_creation_time(self, path):
         creation_time = os.path.getctime(path)

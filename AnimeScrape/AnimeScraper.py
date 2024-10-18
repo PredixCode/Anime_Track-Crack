@@ -120,6 +120,9 @@ class AnimeScraper:
         self.downloader = VideoDownloader()
         self.downloader.download_video(video_source_url,file_name)
 
+    def extract_episode_from_video_url(self, video_source_url):
+        return video_source_url.split('/ep.')[1].split('.')[0]
+
 if __name__ == "__main__":
     scraper = AnimeScraper()
     anime_id, anime_name = scraper.get_anilist_id_from_mal()
