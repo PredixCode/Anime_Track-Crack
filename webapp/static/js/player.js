@@ -1,22 +1,35 @@
 // player.js
 export function playAnime(malAnimeId, episodeNumber) {
     const video = document.getElementById('video-player');
+    const videoModal = document.getElementById('video-modal');
     const videoSrc = `/watch_anime/${malAnimeId}/${episodeNumber}`;
-    document.getElementById('video-modal').style.display = 'block';
+
+    // Display the video modal
+    videoModal.style.display = 'block';
+
+    // Check scroll position and set initial mode
+    if (window.scrollY <= 200) {
+        videoModal.classList.add('cinema-mode');
+        videoModal.classList.remove('minimized');
+    } else {
+        videoModal.classList.add('minimized');
+        videoModal.classList.remove('cinema-mode');
+    }
 
     fetch(videoSrc)
         .then(response => {
             if (!response.ok) {
                 return response.text().then(errorMessage => {
                     showErrorPopup(errorMessage, response.status);
-                    document.getElementById('video-modal').style.display = 'none';
+                    videoModal.style.display = 'none';
                 });
             }
             setupVideoPlayer(video, videoSrc);
         })
         .catch(error => {
             console.error('Error fetching video:', error);
-            showErrorPopup(error);
+            showErrorPopup('An unexpected error occurred.');
+            videoModal.style.display = 'none';
         });
 }
 
@@ -48,6 +61,7 @@ function setupVideoPlayer(video, videoSrc) {
         showErrorPopup('Your browser does not support HLS streaming.');
     }
 }
+
 function showErrorPopup(message) {
     const popup = document.createElement('div');
     popup.className = 'error-popup';

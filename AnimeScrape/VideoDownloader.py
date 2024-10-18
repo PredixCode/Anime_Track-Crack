@@ -136,7 +136,6 @@ class VideoDownloader:
         with open(output_file+'.ts', 'wb') as f:
             for segment in playlist.segments:
                 chunk_url = urljoin(m3u8_url, segment.uri)
-                logging.info(f"Downloading {chunk_url}")
                 try:
                     chunk_response = self.session.get(chunk_url)
                     chunk_response.raise_for_status()

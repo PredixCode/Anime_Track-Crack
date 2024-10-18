@@ -174,8 +174,8 @@ class TokenLoader:
 # EXAMPLE USAGE
 if __name__ == "__main__":
     token_path = 'src/tokens.json'
-    client_id = '23490afihawfn924urohwrq80wpwf4irmqof75r'
-    client_secret = 'awuf3ghq08fhjq29pjf76oiha8oihgfjwp0k045tgtj8678ap9hfba'
+    client_id = 'xxx'
+    client_secret = 'xxx'
     generator = TokenGenerator(client_id, client_secret, token_path)
     generator.authenticate()
     print(generator.token)

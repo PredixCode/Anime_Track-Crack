@@ -13,6 +13,9 @@ from selenium.webdriver.support import expected_conditions as EC
 class AnimeScraper:
     def __init__(self):
         logging.basicConfig(level=logging.INFO)
+        logging.getLogger('selenium').setLevel(logging.WARNING)
+        logging.getLogger('urllib3').setLevel(logging.WARNING)
+
     
     def get_video_source_url_selenium(self, anime_id, episode):
         """
@@ -23,8 +26,6 @@ class AnimeScraper:
         try:
             options = Options()
             options.add_argument('--headless')  # Run Chrome in headless mode if you don't want the browser to be visible
-            #options.add_argument('--no-sandbox')
-            #options.add_argument('--disable-dev-shm-usage')
 
             # Initialize the Chrome driver (Selenium manages the driver)
             driver = webdriver.Chrome(options=options)
