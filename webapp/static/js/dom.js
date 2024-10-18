@@ -22,7 +22,15 @@ export function buildAnimeElement(animeObj, colorClass, showActionModal) {
     // Details
     const details = createElement('div', 'anime-details');
     const watchStatus = createElement('ul', null, `<li>User Status: ${animeObj.my_list_status?.status?.replace('_', ' ').toUpperCase() || 'None'}</li>`);
-    const airingStatus = createElement('ul', null, `<li>Airing Status: ${getAiringStatus(animeObj).replace('_', ' ').toUpperCase()}</li>`);
+
+    let airingStatus_text = '';
+    if (getAiringStatus(animeObj) === 'finished_airing') {
+        airingStatus_text = `<li>Airing Status: ${animeObj.status.replace('_', ' ').toUpperCase() + ' in ' + animeObj.start_season['year'] + ', ' + animeObj.start_season['season'].toUpperCase()}</li>`;
+    } else {
+        airingStatus_text = `<li>Airing Status: ${getAiringStatus(animeObj).replace('_', ' ').toUpperCase()}</li>`;
+    }
+    const airingStatus = createElement('ul', null, airingStatus_text);
+    
     details.appendChild(watchStatus);
     details.appendChild(airingStatus);
     element.appendChild(details);
@@ -34,6 +42,7 @@ export function buildAnimeElement(animeObj, colorClass, showActionModal) {
 
     for (let i = 1; i <= numEpisodes; i++) {
         const episodeButton = createElement('button', 'episode-button', `Episode ${i}`);
+
         if (i <= watchedEpisodes) episodeButton.classList.add('finished');
         episodeButton.dataset.malAnimeId = animeObj.id;
         episodeButton.dataset.episodeNumber = i;

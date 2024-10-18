@@ -6,6 +6,8 @@ from Controller import AnimeController
 
 from AnimeScrape.AnimeScraper import AnimeScraper
 
+# TODO: Implement refresh not yet airerd anime for if they aired now. Request whole anime object
+
 
 class AnimeSeasonsTracker:
     def __init__(self):

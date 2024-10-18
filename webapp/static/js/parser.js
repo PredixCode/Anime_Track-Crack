@@ -12,6 +12,8 @@ export function parseAnimeData(lineageData, selectedWatchStatuses, selectedAirin
         const lineageDiv = document.createElement('div');
         lineageDiv.className = 'anime-lineage';
 
+        let hasAnime = false; // Flag to check if any anime were added to this lineage
+
         lineage.forEach((animeId) => {
             const animeObj = cachedAnimeData[animeId];
 
@@ -25,9 +27,12 @@ export function parseAnimeData(lineageData, selectedWatchStatuses, selectedAirin
             const colorClass = getColorClass(watchStatus);
             const animeElement = buildAnimeElement(animeObj, colorClass, showActionModal);
             lineageDiv.appendChild(animeElement);
+            hasAnime = true; // Mark that this lineage has at least one anime
         });
 
-        lineageContainer.appendChild(lineageDiv);
+        if (hasAnime) {
+            lineageContainer.appendChild(lineageDiv);
+        }
     }
 }
 

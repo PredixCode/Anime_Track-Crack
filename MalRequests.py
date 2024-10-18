@@ -48,8 +48,8 @@ class Requester:
                         retry = True
                     else:
                         break
-            except:
-                return
+            except Exception as e:
+                return e
         
         new_animes = self.anime_repo.update_anime_list_status(all_anime)
         for new_anime_id in new_animes:

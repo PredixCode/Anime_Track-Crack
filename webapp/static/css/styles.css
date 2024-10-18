@@ -80,14 +80,20 @@ a {
     gap: 20px;
 }
 
+/* Anime Element */
 .anime-element {
     background-color: #333;
     border: 1px solid #444;
-    border-radius: 10px;
+    border-radius: 15px;
     overflow: hidden;
-    transition: transform 0.2s;
-    width: calc(17.5% - 20px);
+    transition: transform 0.2s, height 0.3s;
+    position: relative;
+    width: calc((100% - (20px * 5)) / 6); /* 6 items per row with 20px gaps */
     box-sizing: border-box;
+    height: 200px; /* Collapsed height */
+    display: flex;
+    flex-direction: column;
+    cursor: pointer; /* Indicate that it's clickable */
 }
 
 .anime-element:hover {
@@ -96,24 +102,41 @@ a {
 
 .anime-element img {
     width: 100%;
-    height: auto;
-    border-bottom: 1px solid #444;
-    margin: 0px;
-    padding: 0px;
+    height: 100%; /* Half the container's height */
+    object-fit: cover;
+    transition: ease-in-out height 0.3s;
+    z-index: 1; /* Image behind the heading */
 }
 
+/* Heading Styles */
 .anime-element h3 {
-    padding: 10px;
-    padding-left: 20px;
-    font-size: 20px;
+    padding: 5px 20px;
+    font-size: auto;
+    text-align: center;
     margin: 0;
-    background-color: #2c2c2c;
-    border-bottom-left-radius: 30px;
-    border-bottom-right-radius: 30px;
+    border-bottom-left-radius: 15px;
+    border-bottom-right-radius: 15px;
+    position: absolute; /* Overlay on the image */
+    bottom: 0;
+    width: 100%;
+    z-index: 2; /* Ensure heading is above the image */
+    background-blend-mode: multiply; /* Blend the background color with the image */
+    color: white;
+    transition: background 0.3s ease, color 0.3s ease;
+    box-shadow: none; /* Ensure no shadows */
+    border: none; /* Ensure no borders */
+    padding: 10px; /* Ensure correct padding */
+}
+
+.anime-element h3::before {
+    content: '';
+    background: none; /* Ensure there's no background below the heading */
 }
 
 .anime-element h3 a {
-    color: #ffffff;
+    display: block; /* Make sure the link takes up the full h3 area */
+    color: white;
+    text-decoration: none;
 }
 
 .anime-element h3 a:hover {
@@ -121,7 +144,10 @@ a {
 }
 
 .anime-element .anime-details {
+    display: none; /* Hidden when collapsed */
     padding: 10px;
+    z-index: 2;
+    background-blend-mode: multiply;
 }
 
 .anime-element .anime-details ul {
@@ -136,40 +162,50 @@ a {
 }
 
 .anime-element .episode-container {
-    display: none;
+    display: none; /* Hidden when collapsed */
     flex-wrap: wrap;
     gap: 10px;
     padding: 10px;
+    margin-bottom: 80px;
 }
 
+.anime-element.expanded {
+    height: auto; /* Expanded height */
+}
+
+.anime-element.expanded img {
+    height: 100%; /* Show full image */
+}
+
+.anime-element.expanded .anime-details,
 .anime-element.expanded .episode-container {
-    display: flex;
+    display: block; /* Show when expanded */
 }
 
 .anime-green {
-    background: #4caf4fcf;
+    background: rgba(76, 175, 79, 0.8);
 }
 .anime-yellow {
-    background: #ffc107c5;
+    background: rgba(255, 193, 7, 0.8);
 }
 .anime-orange {
-    background: #ff9900ce;
+    background: rgba(255, 153, 0, 0.8);
 }
 .anime-red {
-    background: #f44336c3;
+    background: rgba(244, 67, 54, 0.8);
 }
 
 .anime-green h3 {
-    background: #4caf4fcf;
+    background: rgba(76, 175, 79, 0.8);
 }
 .anime-yellow h3 {
-    background: #ffc107c5;
+    background: rgba(255, 193, 7, 0.8);
 }
 .anime-orange h3 {
-    background: #ff9900c8;
+    background: rgba(255, 153, 0, 0.8);
 }
 .anime-red h3 {
-    background: #f44336c3;
+    background: rgba(244, 67, 54, 0.8);
 }
 
 .episode-button {
@@ -178,6 +214,7 @@ a {
     border: none;
     padding: 10px;
     border-radius: 5px;
+    margin: 1.5px;
 }
 
 .episode-button.finished {
@@ -317,9 +354,40 @@ a {
 
 
 /* Media Queries */
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 2000px) {
     .anime-element {
-        width: calc(50% - 20px);
+        width: calc((100% - (20px * 6)) / 7); /* 7 items per row */
+    }
+}
+
+
+@media screen and (max-width: 1820px) {
+    .anime-element {
+        width: calc((100% - (20px * 5)) / 6); /* 6 items per row */
+    }
+}
+
+@media screen and (max-width: 1440px) {
+    .anime-element {
+        width: calc((100% - (20px * 4)) / 5); /* 5 items per row */
+    }
+}
+
+@media screen and (max-width: 1280px) {
+    .anime-element {
+        width: calc((100% - (20px * 3)) / 4); /* 4 items per row */
+    }
+}
+
+@media screen and (max-width: 1080px) {
+    .anime-element {
+        width: calc((100% - (20px * 2)) / 3); /* 3 items per row */
+    }
+}
+
+@media screen and (max-width: 880px) {
+    .anime-element {
+        width: calc((100% - 20px) / 2); /* 2 items per row */
     }
 
     .modal-content {
@@ -327,12 +395,13 @@ a {
     }
 }
 
-@media screen and (max-width: 480px) {
+@media screen and (max-width: 580px) {
     .anime-element {
-        width: 100%;
+        width: 100%; /* 1 item per row */
     }
 
     .filters-container {
         padding: 10px;
     }
 }
+

@@ -1,10 +1,11 @@
 // main.js
-import { fetchLineageData, fetchAnimes, cachedLineageData } from './data.js';
+import { fetchLineageData, fetchAnimes, cachedLineageData, refreshUserData } from './data.js';
 import { parseAnimeData } from './parser.js';
 import { addEventListeners } from './events.js';
 
 window.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([fetchLineageData(), fetchAnimes()]);
+    await refreshUserData();
     loadFiltersFromLocalStorage(); // Load saved filters
     applyInitialFilters();         // Apply filters after loading them
     addEventListeners();
