@@ -97,7 +97,7 @@ a {
 }
 
 .anime-element:hover {
-    transform: scale(1.02);
+    transform: scale(1.025);
 }
 
 .anime-element img {

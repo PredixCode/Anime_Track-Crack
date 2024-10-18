@@ -1,5 +1,4 @@
 src/*.json
 animes/*.json
-downloaded_animes/
 AnimeScrape/__pycache__
 __pycache__

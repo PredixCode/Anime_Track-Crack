@@ -40,17 +40,8 @@ export function playAnime(malAnimeId, episodeNumber) {
 }
 
 export async function downloadAnime(malAnimeId, episodeNumber, animeTitle) {
-    try {
-        const response = await fetch(`/download_anime/${malAnimeId}/${episodeNumber}`);
-        if (response.ok) {
-            alert(`Started downloading: ${animeTitle} Episode ${episodeNumber}`);
-        } else {
-            alert(`Failed to download: ${animeTitle} Episode ${episodeNumber}`);
-        }
-    } catch (error) {
-        console.error('Error downloading anime:', error);
-        alert('An unexpected error occurred while downloading.');
-    }
+        const downloadUrl = `/download_anime/${malAnimeId}/${episodeNumber}`;
+        window.location.href = downloadUrl;  // Trigger the file download by setting the location to the download URL
 }
 
 // Helper Functions

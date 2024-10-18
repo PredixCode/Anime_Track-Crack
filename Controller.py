@@ -1,11 +1,11 @@
-import os, time
+import io, time
 import webbrowser
 import threading
 import logging
 import requests
 
 
-from flask import Flask, Response, send_file, request, stream_with_context, jsonify, render_template
+from flask import Flask, Response, send_file, request, stream_with_context, jsonify, render_template, make_response
 from werkzeug.serving import make_server
 
 from AnimeScrape.VideoDownloader import VideoDownloader
@@ -101,11 +101,38 @@ class AnimeController:
             
         @self.app.route('/download_anime/<int:mal_anime_id>/<int:episode_number>')
         def download_anime(mal_anime_id, episode_number):
+            # OUT OF ORDER TODO: RESTORE, LET USER CHOOSE DESTINATION
             try:
+                # Get the AniList ID and anime name from MAL ID
                 anime_id, anime_name = self.scraper.get_anilist_id_from_mal(mal_anime_id)
+                # Get the base m3u8 URL (master playlist)
+                video_source_url = self.scraper.get_video_source_url_selenium(anime_id, episode_number)
+                if not video_source_url:
+                    return "Video source URL not found", 404
+                
                 print(f"DOWNLOADING ANIME: {anime_id, anime_name}")
-                self.scraper.scrape_episode(anime_id, anime_name, episode_number)
-                return f"Successfully started downloading {anime_name}", 200
+
+                # Download the video to memory buffer
+                anime_name = self.downloader.get_valid_filename(anime_name)
+                buffer = io.BytesIO()
+                self.downloader.download_video_to_memory(video_source_url, buffer)
+                
+                # Reset buffer position to the start
+                buffer.seek(0)
+                
+                # Create a response with the file
+                response = make_response(send_file(
+                    buffer,
+                    as_attachment=True,
+                    download_name=f'{anime_name}_episode_{episode_number}.ts',
+                    mimetype='video/mp2t'
+                ))
+
+                # Add explicit headers to ensure it's treated as a download
+                response.headers['Content-Disposition'] = f'attachment; filename={anime_name}_episode_{episode_number}.ts'
+                response.headers['Content-Type'] = 'video/mp2t'
+                
+                return response
             except Exception as e:
                 logging.error(f"Error serving anime {mal_anime_id} Episode {episode_number}: {e}")
                 return str(e), 500

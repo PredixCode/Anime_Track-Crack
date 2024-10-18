@@ -1,4 +1,5 @@
 import os
+import re
 import requests
 import m3u8
 import logging
@@ -22,6 +23,14 @@ class VideoDownloader:
         # Load headers from the JSON file
         self.session.headers.update(self._load_headers(headers_file))
 
+    def get_valid_filename(self,name):
+        s = str(name).strip().replace(" ", "_")
+        s = re.sub(r"(?u)[^-\w.]", "", s)
+        if s in {"", ".", ".."}:
+            raise Exception("Could not derive file name from '%s'" % name)
+        return s
+
+
     def download_video(self, base_url, output_file):
         """
         Coordinates the download process: get the M3U8 URL and download chunks.
@@ -37,6 +46,19 @@ class VideoDownloader:
 
         except Exception as e:
             logging.error(f"An error occurred: {e}")
+
+    def download_video_to_memory(self, video_source_url, buffer):
+        # Download the m3u8 playlist
+        playlist_response = requests.get(video_source_url)
+        playlist = m3u8.loads(playlist_response.text)
+        
+        # Download each segment and append it to the buffer
+        for segment in playlist.segments:
+            segment_url = segment.absolute_uri  # Full URL to the segment
+            segment_response = requests.get(segment_url, stream=True)
+            for chunk in segment_response.iter_content(chunk_size=8192):
+                if chunk:
+                    buffer.write(chunk)
 
     def _load_headers(self, headers_file):
         """
@@ -143,6 +165,8 @@ class VideoDownloader:
                     f.write(chunk_data)
                 except requests.RequestException as e:
                     logging.error(f"Failed to download {chunk_url}: {e}")
+                    return e, 500
+        return f"Success downloading {m3u8_url}", 200
 
     def get_m3u8_content(self, m3u8_url):
         """
