@@ -2,6 +2,8 @@
 import { fetchLineageData, fetchAnimes, cachedLineageData, refreshUserData } from './data.js';
 import { parseAnimeData } from './parser.js';
 import { addEventListeners, markUnavailableEpisodes } from './events.js';
+import { playAnime, clearLastWatchedEpisode } from './player.js'; // Import necessary functions
+
 
 window.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([fetchLineageData(), fetchAnimes()]);
@@ -10,6 +12,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     applyInitialFilters();         // Apply filters after loading them
     loadAvailableEpisodesFromLocalStorage();
     addEventListeners();
+    resumeLastWatchedEpisode();
 });
 
 function applyInitialFilters() {
@@ -62,11 +65,65 @@ async function loadAvailableEpisodesFromLocalStorage() {
                 if (Array.isArray(availableEpisodes)) {
                     // Update the UI to mark unavailable episodes based on localStorage data
                     markUnavailableEpisodes(animeId, availableEpisodes);
-                    console.log(`Loaded available episodes for Anime ID ${animeId} from localStorage.`);
                 }
             } catch (error) {
                 console.error(`Error parsing episodes for Anime ID ${animeId}:`, error);
             }
         }
     }
+}
+
+/**
+ * Resumes the last watched episode if available.
+ */
+function resumeLastWatchedEpisode() {
+    // Iterate through all keys in localStorage to find the last watched
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+
+        // Check if the key matches the pattern 'last_watched_{malAnimeId}'
+        if (key.startsWith('last_watched_')) {
+            const malAnimeId = key.replace('last_watched_', '');
+            const lastWatched = getLastWatchedEpisode(malAnimeId);
+
+            if (lastWatched) {
+                const { episodeNumber, timestamp } = lastWatched;
+
+                // Optionally, check how recent the last watch was
+                const now = Date.now();
+                const timeDiff = now - timestamp;
+                const maxTimeDiff = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+                if (timeDiff <= maxTimeDiff) {
+                    // Optionally, prompt the user for confirmation
+                    const resume = confirm(`Do you want to resume watching Anime ID ${malAnimeId}, Episode ${episodeNumber}?`);
+                    if (resume) {
+                        playAnime(malAnimeId, episodeNumber);
+                        console.log(`Resumed last watched Anime ID ${malAnimeId}, Episode ${episodeNumber}.`);
+                    } else {
+                        // User chose not to resume; optionally clear the last watched
+                        clearLastWatchedEpisode(malAnimeId);
+                        console.log(`User chose not to resume Anime ID ${malAnimeId}, Episode ${episodeNumber}.`);
+                    }
+                } else {
+                    clearLastWatchedEpisode(malAnimeId);
+                    console.log(`Last watched Anime ID ${malAnimeId} is too old. Cleared from storage.`);
+                }
+
+                // Assuming only one last watched episode; exit the loop
+                break;
+            }
+        }
+    }
+}
+
+/**
+ * Retrieves the last watched episode details from localStorage.
+ * @param {string} malAnimeId - The unique ID of the anime.
+ * @returns {object|null} - The saved episode details or null if not found.
+ */
+function getLastWatchedEpisode(malAnimeId) {
+    const key = `last_watched_${malAnimeId}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
 }

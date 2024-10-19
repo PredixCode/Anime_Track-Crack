@@ -4,7 +4,7 @@ import requests
 import m3u8
 import logging
 import json
-from urllib.parse import urljoin
+from urllib.parse import urljoin, quote
 
 class VideoDownloader:
     """
@@ -172,8 +172,6 @@ class VideoDownloader:
                 key_response = self.session.get(key_url)
                 key_response.raise_for_status()
                 encryption_key = key_response.content
-                # You will need to decrypt each chunk using this key
-                # This code does not include decryption implementation
                 logging.warning("Encryption detected but decryption is not implemented in this script.")
                 return
 
@@ -214,7 +212,6 @@ class VideoDownloader:
             segment_uri = segment.uri
             full_segment_url = urljoin(base_url + '/', segment_uri)
             # Encode the segment URL to be used as a query parameter
-            from urllib.parse import quote
             encoded_segment_url = quote(full_segment_url, safe='')
             # Adjust the segment URI to point to our /ts_segment route
             segment.uri = f"/ts_segment?url={encoded_segment_url}"

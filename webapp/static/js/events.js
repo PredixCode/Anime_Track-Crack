@@ -15,7 +15,17 @@ export async function addEventListeners() {
     });
 
     // Video Modal Close
-    document.getElementById('close-modal').addEventListener('click', closeVideoModal);
+    document.getElementById('close-video-modal').addEventListener('click', () => {
+        const video = document.getElementById('video-player');
+        const malAnimeId = video.dataset.malAnimeId; // Ensure you set this data attribute when playing
+        const episodeNumber = video.dataset.episodeNumber;
+    
+        if (malAnimeId && episodeNumber) {
+            saveLastWatchedEpisode(malAnimeId, episodeNumber);
+        }
+    
+        closeVideoModal();
+    });
 
     // Minimize Video on Scroll
     window.addEventListener('scroll', toggleVideoMinimize);
