@@ -50,12 +50,39 @@ class VideoDownloader:
     def download_video_to_memory(self, video_source_url, buffer):
         # Download the m3u8 playlist
         playlist_response = requests.get(video_source_url)
-        playlist = m3u8.loads(playlist_response.text)
-        
-        # Download each segment and append it to the buffer
-        for segment in playlist.segments:
-            segment_url = segment.absolute_uri  # Full URL to the segment
+        if playlist_response.status_code != 200:
+            logging.error(f"Failed to download m3u8 playlist from {video_source_url}, Status Code: {playlist_response.status_code}")
+            return
+
+        playlist_content = playlist_response.text
+        logging.debug(f"M3U8 Playlist Content:\n{playlist_content}")
+
+        # Parse the playlist
+        playlist = m3u8.loads(playlist_content)
+        logging.info(f"Parsed m3u8 playlist: {len(playlist.segments)} segments found")
+
+        if playlist.is_variant:
+            logging.info("Playlist is a master playlist. Selecting the first variant.")
+            # Select the first variant playlist
+            if not playlist.playlists:
+                logging.error("No variant playlists found in the master playlist.")
+                return
+            variant = playlist.playlists[0]
+            variant_url = variant.absolute_uri
+            logging.info(f"Selected variant playlist URL: {variant_url}")
+            # Recursively download the variant playlist
+            self.download_video_to_memory(variant_url, buffer)
+            return
+
+        # Proceed if it's a media playlist
+        for idx, segment in enumerate(playlist.segments):
+            segment_url = segment.absolute_uri
+            logging.info(f"Downloading segment {idx + 1}/{len(playlist.segments)}: {segment_url}")
             segment_response = requests.get(segment_url, stream=True)
+            if segment_response.status_code != 200:
+                logging.warning(f"Failed to download segment {segment_url}, Status Code: {segment_response.status_code}")
+                continue  # Optionally handle retries or abort
+
             for chunk in segment_response.iter_content(chunk_size=8192):
                 if chunk:
                     buffer.write(chunk)

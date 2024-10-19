@@ -7,6 +7,7 @@ from Controller import AnimeController
 from AnimeScrape.AnimeScraper import AnimeScraper
 
 # TODO: Implement refresh not yet airerd anime for if they aired now. Request whole anime object
+# TODO: Implement user login and security, also multiple sessions like spring seccurity & redis
 
 
 class AnimeSeasonsTracker:

@@ -216,13 +216,51 @@ a {
     border-radius: 5px;
     margin: 1.5px;
 }
+.refresh-episodes-button {
+    margin-top: 50px;
+    margin-left: 50%;
+}
+
+.episode-button:hover {
+    background-color: #555;
+}
 
 .episode-button.finished {
     background-color: #4caf50;
 }
 
-.episode-button:hover {
+.episode-button.finished:hover {
+    background-color: #54c458;
+}
+
+.episode-button.unavailable {
+    background-color: #f44336; 
+    color: #ffffff; 
+    cursor: not-allowed; 
+    opacity: 0.6; 
+}
+
+.episode-button.unavailable:hover {
+    background-color: #d32f2f; 
+}
+
+/* Optional: Tooltip Styling */
+.episode-button.unavailable::after {
+    content: attr(title);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
     background-color: #555;
+    color: #fff;
+    padding: 5px 8px;
+    border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+    font-size: 12px;
+    z-index: 1002;
 }
 
 /* Modals */

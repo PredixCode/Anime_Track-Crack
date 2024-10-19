@@ -1,10 +1,11 @@
 // dom.js
 import { getAiringStatus, getAnimeTitle, createElement } from './utils.js';
-
+import { checkEpisodes } from './data.js'; // Ensure checkEpisodes is imported
+import { markUnavailableEpisodes, showErrorPopup } from './events.js'; // Ensure these functions are imported
 
 export function buildAnimeElement(animeObj, colorClass, showActionModal) {
     const element = createElement('div', `anime-element ${colorClass}`);
-    element.id = animeObj.id;
+    element.id = `anime-${animeObj.id}`; // Prefix to ensure uniqueness if needed
 
     // Anime Image
     const animeImage = createElement('img');
@@ -30,7 +31,7 @@ export function buildAnimeElement(animeObj, colorClass, showActionModal) {
         airingStatus_text = `<li>Airing Status: ${getAiringStatus(animeObj).replace('_', ' ').toUpperCase()}</li>`;
     }
     const airingStatus = createElement('ul', null, airingStatus_text);
-    
+
     details.appendChild(watchStatus);
     details.appendChild(airingStatus);
     element.appendChild(details);
@@ -41,7 +42,12 @@ export function buildAnimeElement(animeObj, colorClass, showActionModal) {
     const watchedEpisodes = animeObj.my_list_status?.num_episodes_watched || 0;
 
     for (let i = 1; i <= numEpisodes; i++) {
-        const episodeButton = createElement('button', 'episode-button', `Episode ${i}`);
+        let epButtonText =  `Ep ${i}`;
+        if (i <= 9) {
+            epButtonText =  `Ep 0${i}`;
+        }
+
+        const episodeButton = createElement('button', 'episode-button', epButtonText);
 
         if (i <= watchedEpisodes) episodeButton.classList.add('finished');
         episodeButton.dataset.malAnimeId = animeObj.id;
@@ -53,6 +59,39 @@ export function buildAnimeElement(animeObj, colorClass, showActionModal) {
         episodeContainer.appendChild(episodeButton);
     }
 
+    // Refresh Available Episodes Button
+    let availableEpisodeRefreshButton = createElement('button', 'episode-button refresh-episodes-button', 'Refresh Available Episodes');
+    // Assign a data attribute to store the animeId
+    availableEpisodeRefreshButton.dataset.animeId = animeObj.id;
+
+    // Attach event listener to the refresh button
+    availableEpisodeRefreshButton.addEventListener('click', async (e) => {
+        e.stopPropagation(); // Prevent triggering parent click events if any
+
+        const animeId = e.currentTarget.dataset.animeId;
+        try {
+            // Optional: Provide user feedback (e.g., loading spinner)
+            availableEpisodeRefreshButton.disabled = true;
+            availableEpisodeRefreshButton.textContent = 'Refreshing...';
+
+            // Fetch available episodes (from backend and cache)
+            const episodes_available = await checkEpisodes(animeId);
+            markUnavailableEpisodes(animeId, episodes_available);
+
+            // Restore button state
+            availableEpisodeRefreshButton.disabled = false;
+            availableEpisodeRefreshButton.textContent = 'Refresh Available Episodes';
+        } catch (error) {
+            console.error('Error fetching episodes:', error);
+            showErrorPopup('Could not fetch available episodes for anime: ' + animeId);
+
+            // Restore button state even if there's an error
+            availableEpisodeRefreshButton.disabled = false;
+            availableEpisodeRefreshButton.textContent = 'Refresh Available Episodes';
+        }
+    });
+
+    episodeContainer.appendChild(availableEpisodeRefreshButton);
     element.appendChild(episodeContainer);
 
     // Toggle Episode List

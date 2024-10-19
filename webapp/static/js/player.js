@@ -39,9 +39,16 @@ export function playAnime(malAnimeId, episodeNumber) {
         });
 }
 
-export async function downloadAnime(malAnimeId, episodeNumber, animeTitle) {
-        const downloadUrl = `/download_anime/${malAnimeId}/${episodeNumber}`;
-        window.location.href = downloadUrl;  // Trigger the file download by setting the location to the download URL
+export function downloadAnime(malAnimeId, episodeNumber, animeTitle) {
+    const downloadUrl = `/download_anime/${malAnimeId}/${episodeNumber}`;
+    
+    // Create a temporary link element
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `${animeTitle}_episode_${episodeNumber}.ts`; // This may be overridden by server headers
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // Helper Functions
