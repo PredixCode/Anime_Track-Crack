@@ -1,4 +1,4 @@
-import io, time, m3u8
+import io, time, m3u8, os
 import webbrowser
 import threading
 import logging
@@ -11,36 +11,23 @@ from flask import Flask, Response, request, session, redirect, url_for, stream_w
 from flask_session import Session
 from werkzeug.serving import make_server
 
+from MalAuthenticator import TokenGenerator, TokenLoader
+from MalRequester import Requester
 from AnimeScrape.VideoDownloader import VideoDownloader
+from AnimeScrape.AnimeScraper import AnimeScraper
 
 
 logging.basicConfig(level=logging.DEBUG)
 
-
-
 class AnimeController:
-    def __init__(self, requester, scraper):
-        self.requester = requester
-        self.scraper = scraper
+    def __init__(self):
+        self.scraper = AnimeScraper()
         self.downloader = VideoDownloader()
         self.server = None
         self.app = Flask(__name__, template_folder='templates', static_folder='webapp/static')
-
-        '''# Secret key for sessions
-        self.app.secret_key = 'your-secret-key'  # Replace with your secret key
-
-        # Configure session to use Redis
-        self.app.config['SESSION_TYPE'] = 'redis'
-        self.app.config['SESSION_REDIS'] = redis.Redis(host='localhost', port=6379)
-        self.app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Adjust as needed
-        Session(self.app)'''
-
+        self.token_path = 'src/tokens.json'
         self.build_flask()
-
-        # Start the Flask server in a separate thread
         threading.Thread(target=self.run_flask).start()
-
-        # Open the web browser
         time.sleep(1)
         webbrowser.open_new('http://127.0.0.1:5000/')
 
@@ -64,11 +51,19 @@ class AnimeController:
     def build_flask(self):
         @self.app.route('/')
         def index():
-            try:
+            tokens_loader = TokenLoader(self.token_path)
+            if not tokens_loader.ensure_valid_tokens():
+                return redirect(url_for('login'))
+            else:
+                self.requester = Requester(tokens_loader=tokens_loader)
                 return render_template('index.html')
-            except Exception as e:
-                logging.error(f"Error rendering template: {e}")
-                return str(e), 500
+
+        @self.app.route('/login')
+        def login():
+            token_generator = TokenGenerator(self.token_path)
+            token_generator.authenticate()
+            return redirect('/')
+
             
         @self.app.route('/animes')
         def animes():

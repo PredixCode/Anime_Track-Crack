@@ -1,4 +1,9 @@
 import os
+import json
+import requests, base64
+from datetime import datetime, timedelta
+
+import os
 import time
 import base64
 import requests
@@ -28,6 +33,7 @@ class TokenGenerator:
             f"&code_challenge={self.code_challenge}&code_challenge_method=plain"
         )
 
+        # Use a separate Flask app for the Token Generator
         self.app = Flask(__name__)
         self.build_flask()
         self.server_thread = None
@@ -38,7 +44,7 @@ class TokenGenerator:
             data = json.load(f)
         return data['client_id'], data['client_secret']
 
-    # Use this function to start generating the token
+    # Start the token generation and authorization flow
     def authenticate(self):
         webbrowser.open(self.auth_url)
         self.run()
@@ -48,7 +54,7 @@ class TokenGenerator:
         return code_verifier
 
     def generate_code_challenge(self, code_verifier):
-        return code_verifier
+        return code_verifier  # Using 'plain' method for PKCE
 
     def generate_state(self):
         state = base64.urlsafe_b64encode(os.urandom(16)).rstrip(b'=').decode('utf-8')
@@ -58,6 +64,7 @@ class TokenGenerator:
         with open(self.token_path, 'w') as f:
             json.dump(token, f)
 
+    # Build the Flask app to handle the callback
     def build_flask(self):
         @self.app.route('/')
         def index():
@@ -91,7 +98,8 @@ class TokenGenerator:
 
                 if 'error' not in token:
                     self.save_token(token)
-                    self.stop_event.set()  # Signal to stop the server
+                    self.stop_event.set()  # Signal to stop the Flask server
+                    
                     return 'Token obtained and saved. You can close this window now.', 200
                 else:
                     return 'Failed to obtain token.', 500
@@ -99,7 +107,6 @@ class TokenGenerator:
                 return 'Authorization failed.', 500
 
     def run(self):
-
         def run_flask():
             self.server = make_server('localhost', 5000, self.app)
             self.server.serve_forever()
@@ -107,7 +114,7 @@ class TokenGenerator:
         flask_thread = threading.Thread(target=run_flask)
         flask_thread.start()
 
-        # Wait for the stop event
+        # Wait for the stop event to shut down the Flask server
         self.stop_event.wait()
         print("Shutting down the Flask server...")
 
@@ -115,67 +122,78 @@ class TokenGenerator:
         self.server.shutdown()
         flask_thread.join()
 
+
 class TokenLoader:
-    def __init__(self, tokens_path):
+    def __init__(self, tokens_path, auth_file_path='src/auth.json'):
         self.tokens_path = tokens_path
-        self.login()
-
-    def login(self):
+        self.access_token = None
+        self.refresh_token = None
+        self.expires_at = None
+        self.client_id, self.client_secret = self.getClientAuthData(auth_file_path)
         self.load_tokens()
-        self.ensure_valid_tokens()
 
-    def load_tokens(self, attemps_made=0):
+    def getClientAuthData(self, auth_file_path):
+        with open(auth_file_path, 'r') as f:
+            data = json.load(f)
+        return data['client_id'], data['client_secret']
+
+    def load_tokens(self):
         try:
             with open(self.tokens_path, 'r') as file:
                 tokens = json.load(file)
-        except FileNotFoundError as e:
-            if attemps_made == 0 or attemps_made == 30:
-                tokens = self.refresh_tokens()
+                self.access_token = tokens.get('access_token')
+                self.refresh_token = tokens.get('refresh_token')
+                expires_in = tokens.get('expires_in')
+                token_obtained_at = datetime.fromtimestamp(os.path.getmtime(self.tokens_path))
+                self.expires_at = token_obtained_at + timedelta(seconds=expires_in)
+        except FileNotFoundError:
+            pass
 
-        if tokens != None:
-            self.access_token = tokens.get('access_token')
-            self.refresh_token = tokens.get('refresh_token')
-
-            self.token_creation_time = self.get_access_token_creation_time(self.tokens_path)
-            self.expires_at = self.token_creation_time + timedelta(seconds=tokens.get('expires_in'))
-        else:
-            if attemps_made < 30:
-                time.sleep(30)
-                self.load_tokens(attemps_made+1)
-            else:
-                quit("Error loading tokens, retry later...")
-
-    def get_access_token_creation_time(self, path):
-        creation_time = os.path.getctime(path)
-        return datetime.fromtimestamp(creation_time)
-    
     def ensure_valid_tokens(self):
-        if datetime.now() >= self.expires_at:
-            self.refresh_tokens()
+        if self.access_token is None:
+            return False
+        elif datetime.now() >= self.expires_at:
+            # Attempt to refresh the token
+            if self.refresh_token:
+                return self.refresh_tokens()
+            else:
+                return False
         else:
-            print("Tokens are successfully loaded and fresh")
-    
+            return True
+
     def refresh_tokens(self):
-        print("Out of date tokens, refreshing...")
-        if os.path.exists(self.tokens_path):
-            os.remove(self.tokens_path)
+        token_url = "https://myanimelist.net/v1/oauth2/token"
+        data = {
+            'client_id': self.client_id,
+            'client_secret': self.client_secret,
+            'grant_type': 'refresh_token',
+            'refresh_token': self.refresh_token,
+        }
 
-        TokenGenerator(self.tokens_path).authenticate()
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        }
 
-    def isAccessTokenValid(self):
-        creation_time = os.path.getctime(self.tokens_path)
-        datetime.fromtimestamp(creation_time)
+        response = requests.post(token_url, data=data, headers=headers)
+        token = response.json()
+        self.token = token
+
+        if 'error' not in token:
+            self.save_token(token)
+            self.access_token = token.get('access_token')
+            self.refresh_token = token.get('refresh_token')
+            expires_in = token.get('expires_in')
+            self.expires_at = datetime.now() + timedelta(seconds=expires_in)
+            return True
+        else:
+            # Refresh token is invalid or expired
+            return False
+
+    def save_token(self, token):
+        with open(self.tokens_path, 'w') as f:
+            json.dump(token, f)
 
     def get_headers(self):
         return {
             'Authorization': f'Bearer {self.access_token}'
         }
-
-# EXAMPLE USAGE
-if __name__ == "__main__":
-    token_path = 'src/tokens.json'
-    client_id = 'xxx'
-    client_secret = 'xxx'
-    generator = TokenGenerator(client_id, client_secret, token_path)
-    generator.authenticate()
-    print(generator.token)
