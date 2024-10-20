@@ -2,6 +2,10 @@
 export let cachedAnimeData = null;
 export let cachedLineageData = null;
 
+export async function refreshUserData() {
+    await fetch('/refresh_user_list_status');
+}
+
 export async function fetchLineageData() {
     if (cachedLineageData) return cachedLineageData;
     const response = await fetch('/lineage_data');
@@ -16,9 +20,7 @@ export async function fetchAnimes() {
     return cachedAnimeData;
 }
 
-export async function refreshUserData() {
-    await fetch('/refresh_user_list_status');
-}
+
 
 /**
  * Fetches available episodes for a given MAL Anime ID.

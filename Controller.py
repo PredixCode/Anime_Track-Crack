@@ -3,10 +3,12 @@ import webbrowser
 import threading
 import logging
 import requests
-from urllib.parse import urljoin
+from datetime import timedelta
 
 
-from flask import Flask, Response, send_file, request, stream_with_context, jsonify, render_template, make_response
+import redis
+from flask import Flask, Response, request, session, redirect, url_for, stream_with_context, jsonify, render_template
+from flask_session import Session
 from werkzeug.serving import make_server
 
 from AnimeScrape.VideoDownloader import VideoDownloader
@@ -17,13 +19,21 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class AnimeController:
-    def __init__(self, anime_repo, requester, scraper):
-        self.anime_repo = anime_repo
+    def __init__(self, requester, scraper):
         self.requester = requester
         self.scraper = scraper
         self.downloader = VideoDownloader()
         self.server = None
         self.app = Flask(__name__, template_folder='templates', static_folder='webapp/static')
+
+        '''# Secret key for sessions
+        self.app.secret_key = 'your-secret-key'  # Replace with your secret key
+
+        # Configure session to use Redis
+        self.app.config['SESSION_TYPE'] = 'redis'
+        self.app.config['SESSION_REDIS'] = redis.Redis(host='localhost', port=6379)
+        self.app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # Adjust as needed
+        Session(self.app)'''
 
         self.build_flask()
 
@@ -33,6 +43,7 @@ class AnimeController:
         # Open the web browser
         time.sleep(1)
         webbrowser.open_new('http://127.0.0.1:5000/')
+
 
     def proxy_ts_segment(self, segment_url):
         """
@@ -63,7 +74,7 @@ class AnimeController:
         def animes():
             try:
                 anime_objs_json = {} 
-                for anime in self.anime_repo.get_all_animes():
+                for anime in self.requester.anime_repo.get_all_animes():
                     anime_objs_json[anime.id] = anime.to_dict()
 
                 return jsonify(anime_objs_json)
@@ -75,7 +86,7 @@ class AnimeController:
         @self.app.route('/user_animes')
         def user_animes():
             try:
-                return jsonify(self.anime_repo.user_anime_list)
+                return jsonify(self.requester.anime_repo.user_anime_list)
 
             except Exception as e:
                 logging.error(f"Error rendering template: {e}")
@@ -94,7 +105,7 @@ class AnimeController:
         @self.app.route('/lineage_data')
         def lineage_data():
             try:
-                lineage = self.anime_repo.generate_anime_seasons_liniage()
+                lineage = self.requester.anime_repo.generate_anime_seasons_liniage()
                 return jsonify(lineage)
             except Exception as e:
                 logging.error(f"Error generating lineage data: {e}")

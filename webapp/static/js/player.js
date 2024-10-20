@@ -145,10 +145,10 @@ export function downloadAnime(malAnimeId, episodeNumber, animeTitle) {
 function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
     if (Hls.isSupported()) {
         const hlsConfig = {
-            maxBufferLength: 2.5 * 60,            // 5 minutes
-            maxMaxBufferLength: 5 * 60,        // 10 minutes
-            maxBufferSize: 1000 * 1000 * 1000,  // 1GB
-            maxBufferHole: 0.5,                 // 0.5 seconds
+            maxBufferLength: 2.5 * 60,           // 2.5 minutes
+            maxMaxBufferLength: 5 * 60,          // 5 minutes
+            maxBufferSize: 1000 * 1000 * 1000,   // 1GB
+            maxBufferHole: 0.5,                  // 0.5 seconds
             startPosition: -1,
             startMaxNotBuffered: 10,
         };

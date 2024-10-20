@@ -1,6 +1,6 @@
 import time
 
-from AnimeRepository import AnimeRepository
+
 from MalRequests import Requester
 from Controller import AnimeController
 
@@ -8,14 +8,13 @@ from AnimeScrape.AnimeScraper import AnimeScraper
 
 # TODO: Implement refresh not yet airerd anime for if they aired now. Request whole anime object
 # TODO: Implement user login and security, also multiple sessions like spring seccurity & redis
-# TODO: FRONTEND: Place switch (wacth/downlaod) in every anime box, left, next to refresh available ep's, instead of lame modal that pops up and asks for action
+# TODO: FRONTEND: Place switch (wacth/downlaod) in every anime box, left, next to refresh available ep's, instead of lame modal that pops up and asks for this
 
 
 class AnimeSeasonsTracker:
     def __init__(self):
         self.start_t = time.time()
-        self.anime_repo = AnimeRepository() 
-        self.requester = Requester(self.anime_repo)
+        self.requester = Requester()
         self.scraper = AnimeScraper()
 
         self.main()
@@ -38,7 +37,7 @@ class AnimeSeasonsTracker:
         self.generate_all_relation_levels()
 
         # Start anime data controller
-        self.animeController = AnimeController(self.anime_repo, self.requester, self.scraper)
+        self.animeController = AnimeController(self.requester, self.scraper)
 
         # End message
         self.print_end_messages()

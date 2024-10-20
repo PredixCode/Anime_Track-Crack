@@ -66,11 +66,11 @@ class AnimeRepository:
         for anime in all_anime:
             id = anime.get('node', {}).get('id', None)
             list_status = anime.get('list_status', {})
-            if id is not None and list_status is not None:
+            if id is not None:
                 if self.get_anime_by_id(id) is not None:
-                    self.animes[id].my_list_status = list_status
+                    self.animes[id].my_list_status = list_status # Update user list status for anime
                 else:
-                    new_animes.append(id)
+                    new_animes.append(id) # Append to list, to create entirely new anime object later
         return new_animes
 
 

@@ -1,16 +1,17 @@
 import os
 import requests
 
+from AnimeRepository import AnimeRepository
 from MalAuthenticator import TokenLoader
 
 class Requester:
-    def __init__(self, anime_repo, tokens_path='src/tokens.json'):
+    def __init__(self, tokens_path='src/tokens.json'):
         self.num_api_calls = 0
         self.errors = []
         self.base_url = 'https://api.myanimelist.net/v2/'
         self.tokens_loader = TokenLoader(tokens_path)
         self.headers = self.tokens_loader.get_headers()
-        self.anime_repo = anime_repo
+        self.anime_repo = AnimeRepository()
             
 
     def get_user_anime_list(self, username='@me', limit=100, status=None, sort='list_score'):       
@@ -54,6 +55,7 @@ class Requester:
         new_animes = self.anime_repo.update_anime_list_status(all_anime)
         for new_anime_id in new_animes:
             self.get_anime_info_by_id(new_anime_id)
+        
         self.anime_repo.save_user_anime_list(all_anime)
 
 
@@ -64,7 +66,7 @@ class Requester:
                 anime_details_url = self.base_url + f'anime/{anime_id}'
                 
                 params = {
-                    'fields': 'id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,rank,popularity,num_list_users,num_scoring_users,nsfw,created_at,updated_at,media_type,status,genres,my_list_status,num_episodes,start_season,broadcast,source,average_episode_duration,rating,pictures,background,related_anime,related_manga,recommendations,studios,statistics'
+                    'fields': 'id,title,main_picture,alternative_titles,start_date,end_date,synopsis,mean,rank,popularity,num_list_users,num_scoring_users,nsfw,created_at,updated_at,media_type,status,genres,num_episodes,start_season,broadcast,source,average_episode_duration,rating,pictures,background,related_anime,related_manga,recommendations,studios,statistics'
                 }
                 
                 try:

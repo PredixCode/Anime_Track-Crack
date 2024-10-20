@@ -2,14 +2,13 @@
 import { fetchLineageData, fetchAnimes, cachedLineageData, refreshUserData } from './data.js';
 import { parseAnimeData } from './parser.js';
 import { addEventListeners, markUnavailableEpisodes } from './events.js';
-import { playAnime, clearLastWatchedEpisode } from './player.js'; // Import necessary functions
+import { playAnime, clearLastWatchedEpisode } from './player.js';
 
 
 window.addEventListener('DOMContentLoaded', async () => {
-    await Promise.all([fetchLineageData(), fetchAnimes()]);
-    await refreshUserData();
-    loadFiltersFromLocalStorage(); // Load saved filters
-    applyInitialFilters();         // Apply filters after loading them
+    await Promise.all([refreshUserData(), fetchLineageData(), fetchAnimes()]);
+    loadFiltersFromLocalStorage();
+    applyInitialFilters();        
     loadAvailableEpisodesFromLocalStorage();
     addEventListeners();
     resumeLastWatchedEpisode();

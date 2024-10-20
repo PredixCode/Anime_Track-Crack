@@ -1,6 +1,13 @@
 // utils.js
 export function getAnimeTitle(animeObj) {
-    return animeObj.alternative_titles?.en || animeObj.title;
+    let title = animeObj.alternative_titles?.en || animeObj.title;
+
+    if (animeObj.my_list_status['score'] !== undefined && animeObj.my_list_status['score'] >= 1) {
+        return title + ` (${animeObj.my_list_status['score']})`;
+    }
+    return title;
+    
+    
 }
 
 export function getWatchStatus(animeObj) {

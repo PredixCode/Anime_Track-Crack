@@ -71,7 +71,6 @@ export function buildAnimeElement(animeObj, colorClass, showActionModal) {
 
             const animeId = e.currentTarget.dataset.animeId;
             try {
-                // Optional: Provide user feedback (e.g., loading spinner)
                 availableEpisodeRefreshButton.disabled = true;
                 availableEpisodeRefreshButton.textContent = 'Refreshing...';
 
