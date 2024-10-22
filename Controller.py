@@ -28,6 +28,7 @@ class AnimeController:
         # Configure session
         self.app.secret_key = '3a4d8f5b6c9e827a0b9d7c8f3e5d1f8a2b4c6d8e9f7b3a1d5e7f9c0b8a1d2c3'
         self.app.config['SESSION_TYPE'] = 'filesystem' 
+        self.app.config['SESSION_FILE_DIR'] = 'flask_session/'
         self.app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=100)
         Session(self.app)
 
@@ -165,6 +166,155 @@ class AnimeController:
             }
 
             return redirect(url_for('index'))
+        
+        @self.app.route('/api/save_playback_time', methods=['POST'])
+        def save_playback_time():
+            data = request.get_json()
+            malAnimeId = str(data.get('malAnimeId'))
+            episodeNumber = str(data.get('episodeNumber'))
+            currentTime = data.get('currentTime')
+
+            if not all([malAnimeId, episodeNumber, currentTime is not None]):
+                return jsonify({'error': 'Missing data fields.'}), 400
+
+            key = f"watched_{malAnimeId}_{episodeNumber}"
+            session[key] = currentTime
+            return jsonify({'message': 'Playback time saved.'}), 200
+
+        @self.app.route('/api/get_playback_time', methods=['GET'])
+        def get_playback_time():
+            malAnimeId = request.args.get('malAnimeId')
+            episodeNumber = request.args.get('episodeNumber')
+
+            if not all([malAnimeId, episodeNumber]):
+                return jsonify({'error': 'Missing query parameters.'}), 400
+
+            key = f"watched_{malAnimeId}_{episodeNumber}"
+            currentTime = session.get(key)
+
+            if currentTime is not None:
+                return jsonify({'currentTime': currentTime}), 200
+            else:
+                return jsonify({'currentTime': None}), 200
+
+        @self.app.route('/api/remove_playback_time', methods=['POST'])
+        def remove_playback_time():
+            data = request.get_json()
+            malAnimeId = str(data.get('malAnimeId'))
+            episodeNumber = str(data.get('episodeNumber'))
+
+            if not all([malAnimeId, episodeNumber]):
+                return jsonify({'error': 'Missing data fields.'}), 400
+
+            key = f"watched_{malAnimeId}_{episodeNumber}"
+            session.pop(key, None)
+            return jsonify({'message': 'Playback time removed.'}), 200
+
+        @self.app.route('/api/save_last_watched', methods=['POST'])
+        def save_last_watched():
+            data = request.get_json()
+            malAnimeId = str(data.get('malAnimeId'))
+            episodeNumber = data.get('episodeNumber')
+
+            if not all([malAnimeId, episodeNumber]):
+                return jsonify({'error': 'Missing data fields.'}), 400
+
+            key = f"last_watched_{malAnimeId}"
+            session[key] = {
+                'episodeNumber': episodeNumber,
+                'timestamp': int(time.time() * 1000)  # Unix timestamp in milliseconds
+            }
+            return jsonify({'message': 'Last watched episode saved.'}), 200
+
+        @self.app.route('/api/get_last_watched', methods=['GET'])
+        def get_last_watched():
+            malAnimeId = request.args.get('malAnimeId')
+
+            if not malAnimeId:
+                return jsonify({'error': 'Missing malAnimeId parameter.'}), 400
+
+            key = f"last_watched_{malAnimeId}"
+            last_watched = session.get(key)
+
+            if last_watched:
+                return jsonify({'lastWatched': last_watched}), 200
+            else:
+                return jsonify({'lastWatched': None}), 200
+
+        @self.app.route('/api/clear_last_watched', methods=['POST'])
+        def clear_last_watched():
+            data = request.get_json()
+            malAnimeId = str(data.get('malAnimeId'))
+
+            if not malAnimeId:
+                return jsonify({'error': 'Missing malAnimeId field.'}), 400
+
+            key = f"last_watched_{malAnimeId}"
+            session.pop(key, None)
+            return jsonify({'message': 'Last watched episode cleared.'}), 200
+
+        @self.app.route('/api/get_last_watched_all', methods=['GET'])
+        def get_last_watched_all():
+            """
+            Retrieves all last watched episodes from the session.
+            """
+            last_watched = {}
+            for key in session:
+                if key.startswith('last_watched_'):
+                    malAnimeId = key.replace('last_watched_', '')
+                    last_watched[malAnimeId] = session[key]
+            return jsonify({'lastWatched': last_watched}), 200
+
+        @self.app.route('/api/get_available_episodes', methods=['GET'])
+        def get_available_episodes():
+            """
+            Retrieves available episodes for each anime from the session.
+            Assumes that 'available_episodes_{malAnimeId}' keys are used.
+            """
+            available_episodes = {}
+            for key in session:
+                if key.startswith('available_episodes_'):
+                    malAnimeId = key.replace('available_episodes_', '')
+                    available_episodes[malAnimeId] = session[key]
+            return jsonify({'availableEpisodes': available_episodes}), 200
+        
+        @self.app.route('/api/get_episode_data/<int:mal_anime_id>/<int:episode_number>', methods=['GET'])
+        def get_episode_data(mal_anime_id, episode_number):
+            """
+            Retrieves both available episodes and the next airing date for a specific anime and episode.
+
+            Parameters:
+                mal_anime_id (int): The MyAnimeList (MAL) ID of the anime.
+                episode_number (int): The episode number.
+
+            Returns:
+                JSON response containing 'availableEpisodes' and 'nextAiringDate'.
+            """
+            try:
+                episode_data = self.scraper.get_episode_data(mal_anime_id)
+                available_episodes = episode_data.get('availableEpisodes', [])
+                next_airing_date = episode_data.get('nextAiringDate')
+
+                # Save available episodes to session
+                available_key = f"available_episodes_{mal_anime_id}"
+                session[available_key] = available_episodes
+
+                # Save next airing date to session
+                if next_airing_date:
+                    airing_key = f"next_airing_{mal_anime_id}_{episode_number}"
+                    session[airing_key] = next_airing_date  # ISO format string
+                else:
+                    airing_key = f"next_airing_{mal_anime_id}_{episode_number}"
+                    session.pop(airing_key, None)  # Remove if exists
+
+                return jsonify({
+                    'availableEpisodes': available_episodes,
+                    'nextAiringDate': next_airing_date
+                }), 200
+
+            except Exception as e:
+                logging.error(f"Error in get_episode_data API: {e}", exc_info=True)
+                return jsonify({'error': 'Internal Server Error'}), 500
 
             
         @self.app.route('/animes')

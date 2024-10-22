@@ -43,9 +43,9 @@ export function buildAnimeElement(animeObj, colorClass) {
     const watchedEpisodes = animeObj.my_list_status?.num_episodes_watched || 0;
 
     for (let i = 1; i <= numEpisodes; i++) {
-        let epButtonText =  `Ep ${i}`;
+        let epButtonText = `Ep ${i}`;
         if (i <= 9) {
-            epButtonText =  `Ep 0${i}`;
+            epButtonText = `Ep 0${i}`;
         }
 
         const episodeButton = createElement('button', 'episode-button', epButtonText);
@@ -68,8 +68,17 @@ export function buildAnimeElement(animeObj, colorClass) {
         episodeContainer.appendChild(episodeButton);
     }
 
+
     // Action Switch and Refresh Button Container
     const controlsContainer = createElement('div', 'controls-container');
+
+    // Countdown Button Container
+    const countdownContainer = createElement('div', 'countdown-container');
+    countdownContainer.id = `countdown-container-${animeObj.id}`;
+    controlsContainer.appendChild(countdownContainer);
+
+    episodeContainer.appendChild(controlsContainer);
+    element.appendChild(episodeContainer);
 
     // Action Switch Container
     const actionSwitchContainer = createElement('div', 'action-switch-container');
@@ -127,9 +136,18 @@ export function buildAnimeElement(animeObj, colorClass) {
                 availableEpisodeRefreshButton.disabled = true;
                 availableEpisodeRefreshButton.textContent = 'Refreshing...';
 
-                // Fetch available episodes (from backend and cache)
-                const episodes_available = await checkEpisodes(animeId);
+                // Fetch available episodes and next airing date (from backend and cache)
+                const response = await fetch(`/api/get_episode_data/${animeId}/1`); // Assuming episode 1 for airing date
+                if (!response.ok) {
+                    throw new Error('Failed to fetch episode data.');
+                }
+                const data = await response.json();
+
+                const episodes_available = data.availableEpisodes;
+                const next_airing_date = data.nextAiringDate;
+
                 markUnavailableEpisodes(animeId, episodes_available);
+                initializeCountdown(animeId, next_airing_date, element);
 
                 // Restore button state
                 availableEpisodeRefreshButton.disabled = false;
@@ -147,13 +165,58 @@ export function buildAnimeElement(animeObj, colorClass) {
         controlsContainer.appendChild(availableEpisodeRefreshButton);
     }
 
-    episodeContainer.appendChild(controlsContainer);
-    element.appendChild(episodeContainer);
-
     // Toggle Episode List
     element.addEventListener('click', () => {
         element.classList.toggle('expanded');
     });
 
     return element;
+}
+
+/**
+ * Initializes the countdown timer for the next airing date.
+ * @param {number} malAnimeId - The MAL Anime ID.
+ * @param {string|null} nextAiringDateISO - The next airing date in ISO format.
+ * @param {HTMLElement} animeElement - The anime element in the DOM.
+ */
+export function initializeCountdown(malAnimeId, nextAiringDateISO, animeElement) {
+    const countdownContainer = animeElement.querySelector(`#countdown-container-${malAnimeId}`);
+    countdownContainer.innerHTML = ''; // Clear any existing countdown
+
+    if (!nextAiringDateISO) {
+        // No airing date available
+        const noDateText = createElement('span', 'countdown-text', 'Next episode airing date not available.');
+        countdownContainer.appendChild(noDateText);
+        return;
+    }
+
+    const countdownButton = createElement('button', 'countdown-button', 'new ep in: ');
+    countdownButton.disabled = true; // Make it non-clickable
+    countdownContainer.appendChild(countdownButton);
+
+    const countdownText = createElement('span', 'countdown-text', '');
+    countdownButton.appendChild(countdownText);
+
+    const targetDate = new Date(nextAiringDateISO);
+
+    function updateCountdown() {
+        const now = new Date();
+        const distance = targetDate - now;
+
+        if (distance < 0) {
+            countdownText.innerText = 'Episode is now airing!';
+            clearInterval(intervalId);
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        countdownText.innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    }
+
+    updateCountdown(); // Initial call
+    const intervalId = setInterval(updateCountdown, 1000); // Update every second
 }

@@ -3,93 +3,151 @@
 let hlsInstance = null; // Global HLS instance
 
 /**
- * Generates a unique key for storing playback time based on animeId and episodeNumber.
- * @param {number} malAnimeId - The unique ID of the anime.
- * @param {number} episodeNumber - The episode number.
- * @returns {string} - The generated localStorage key.
+ * API Endpoints
  */
-function getPlaybackKey(malAnimeId, episodeNumber) {
-    return `watched_${malAnimeId}_${episodeNumber}`;
-}
+const API_BASE_URL = '/api';
 
 /**
- * Saves the current playback time to localStorage.
+ * Saves the current playback time to the server session.
  * @param {number} malAnimeId - The unique ID of the anime.
  * @param {number} episodeNumber - The episode number.
  * @param {number} currentTime - The current playback time in seconds.
  */
-function savePlaybackTime(malAnimeId, episodeNumber, currentTime) {
-    const key = getPlaybackKey(malAnimeId, episodeNumber);
-    localStorage.setItem(key, currentTime);
-    console.log(`Playback time saved: ${currentTime} seconds for Anime ID ${malAnimeId}, Episode ${episodeNumber}`);
+async function savePlaybackTime(malAnimeId, episodeNumber, currentTime) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/save_playback_time`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ malAnimeId, episodeNumber, currentTime })
+        });
+
+        if (response.ok) {
+            console.log(`Playback time saved: ${currentTime} seconds for Anime ID ${malAnimeId}, Episode ${episodeNumber}`);
+        } else {
+            console.error('Failed to save playback time.');
+        }
+    } catch (error) {
+        console.error('Error saving playback time:', error);
+    }
 }
 
 /**
- * Retrieves the saved playback time from localStorage.
+ * Retrieves the saved playback time from the server session.
  * @param {number} malAnimeId - The unique ID of the anime.
  * @param {number} episodeNumber - The episode number.
  * @returns {number|null} - The saved playback time in seconds or null if not found.
  */
-function getSavedPlaybackTime(malAnimeId, episodeNumber) {
-    const key = getPlaybackKey(malAnimeId, episodeNumber);
-    const time = localStorage.getItem(key);
-    return time ? parseFloat(time) : null;
+async function getSavedPlaybackTime(malAnimeId, episodeNumber) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/get_playback_time?malAnimeId=${malAnimeId}&episodeNumber=${episodeNumber}`);
+        if (response.ok) {
+            const data = await response.json();
+            return data.currentTime !== undefined ? parseFloat(data.currentTime) : null;
+        } else {
+            console.error('Failed to retrieve playback time.');
+            return null;
+        }
+    } catch (error) {
+        console.error('Error retrieving playback time:', error);
+        return null;
+    }
 }
 
 /**
- * Removes the saved playback time from localStorage.
+ * Removes the saved playback time from the server session.
  * @param {number} malAnimeId - The unique ID of the anime.
  * @param {number} episodeNumber - The episode number.
  */
-function removePlaybackTime(malAnimeId, episodeNumber) {
-    const key = getPlaybackKey(malAnimeId, episodeNumber);
-    localStorage.removeItem(key);
-    console.log(`Playback time removed for Anime ID ${malAnimeId}, Episode ${episodeNumber}`);
+async function removePlaybackTime(malAnimeId, episodeNumber) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/remove_playback_time`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ malAnimeId, episodeNumber })
+        });
+
+        if (response.ok) {
+            console.log(`Playback time removed for Anime ID ${malAnimeId}, Episode ${episodeNumber}`);
+        } else {
+            console.error('Failed to remove playback time.');
+        }
+    } catch (error) {
+        console.error('Error removing playback time:', error);
+    }
 }
 
 /**
- * Generates a unique key for storing last watched episode based on animeId.
- * @param {number} malAnimeId - The unique ID of the anime.
- * @returns {string} - The generated localStorage key.
- */
-function getLastWatchedKey(malAnimeId) {
-    return `last_watched_${malAnimeId}`;
-}
-
-/**
- * Saves the last watched episode details to localStorage.
+ * Saves the last watched episode details to the server session.
  * @param {number} malAnimeId - The unique ID of the anime.
  * @param {number} episodeNumber - The episode number.
  */
-function saveLastWatchedEpisode(malAnimeId, episodeNumber) {
-    const key = getLastWatchedKey(malAnimeId);
-    const data = {
-        episodeNumber: episodeNumber,
-        timestamp: Date.now()
-    };
-    localStorage.setItem(key, JSON.stringify(data));
-    console.log(`Last watched episode saved: Anime ID ${malAnimeId}, Episode ${episodeNumber}`);
+async function saveLastWatchedEpisode(malAnimeId, episodeNumber) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/save_last_watched`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ malAnimeId, episodeNumber })
+        });
+
+        if (response.ok) {
+            console.log(`Last watched episode saved: Anime ID ${malAnimeId}, Episode ${episodeNumber}`);
+        } else {
+            console.error('Failed to save last watched episode.');
+        }
+    } catch (error) {
+        console.error('Error saving last watched episode:', error);
+    }
 }
 
 /**
- * Retrieves the last watched episode details from localStorage.
+ * Retrieves the last watched episode details from the server session.
  * @param {number} malAnimeId - The unique ID of the anime.
  * @returns {object|null} - The saved episode details or null if not found.
  */
-function getLastWatchedEpisode(malAnimeId) {
-    const key = getLastWatchedKey(malAnimeId);
-    const data = localStorage.getItem(key);
-    return data ? JSON.parse(data) : null;
+async function getLastWatchedEpisode(malAnimeId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/get_last_watched?malAnimeId=${malAnimeId}`);
+        if (response.ok) {
+            const data = await response.json();
+            return data.lastWatched || null;
+        } else {
+            console.error('Failed to retrieve last watched episode.');
+            return null;
+        }
+    } catch (error) {
+        console.error('Error retrieving last watched episode:', error);
+        return null;
+    }
 }
 
 /**
- * Clears the last watched episode details from localStorage.
+ * Clears the last watched episode details from the server session.
  * @param {number} malAnimeId - The unique ID of the anime.
  */
-function clearLastWatchedEpisode(malAnimeId) {
-    const key = getLastWatchedKey(malAnimeId);
-    localStorage.removeItem(key);
-    console.log(`Last watched episode cleared for Anime ID ${malAnimeId}`);
+async function clearLastWatchedEpisode(malAnimeId) {
+    try {
+        const response = await fetch(`${API_BASE_URL}/clear_last_watched`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ malAnimeId })
+        });
+
+        if (response.ok) {
+            console.log(`Last watched episode cleared for Anime ID ${malAnimeId}`);
+        } else {
+            console.error('Failed to clear last watched episode.');
+        }
+    } catch (error) {
+        console.error('Error clearing last watched episode:', error);
+    }
 }
 
 /**
@@ -98,9 +156,9 @@ function clearLastWatchedEpisode(malAnimeId) {
  * @param {number} episodeNumber - The episode number.
  * @param {string} animeTitle - The title of the anime.
  */
-export function downloadAnime(malAnimeId, episodeNumber, animeTitle) { // TODO: export to different .js file
+export async function downloadAnime(malAnimeId, episodeNumber, animeTitle) { // TODO: export to different .js file
     const downloadUrl = `/download_anime/${malAnimeId}/${episodeNumber}`;
-    
+
     // Create a temporary link element
     const link = document.createElement('a');
     link.href = downloadUrl;
@@ -115,13 +173,13 @@ export function downloadAnime(malAnimeId, episodeNumber, animeTitle) { // TODO: 
  * @param {number} malAnimeId - The MAL ID of the anime.
  * @param {number} episodeNumber - The episode number.
  */
-export function playAnime(malAnimeId, episodeNumber) {
+export async function playAnime(malAnimeId, episodeNumber) {
     const video = document.getElementById('video-player');
     const videoModal = document.getElementById('video-modal');
     const videoSrc =  `/watch_anime/${malAnimeId}/${episodeNumber}`;
 
     // Save the last watched episode details
-    saveLastWatchedEpisode(malAnimeId, episodeNumber);
+    await saveLastWatchedEpisode(malAnimeId, episodeNumber);
 
     // Display the video modal
     videoModal.style.display = 'block';
@@ -148,22 +206,20 @@ export function playAnime(malAnimeId, episodeNumber) {
         console.log('Previous HLS instance destroyed.');
     }
 
-    fetch(videoSrc)
-        .then(response => {
-            if (!response.ok) {
-                return response.text().then(errorMessage => {
-                    showErrorPopup(errorMessage, response.status);
-                    videoModal.style.display = 'none';
-                    throw new Error('Failed to fetch video source URL');
-                });
-            }
-            setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber);
-        })
-        .catch(error => {
-            console.error('Error fetching video:', error);
-            showErrorPopup('An unexpected error occurred.');
+    try {
+        const response = await fetch(videoSrc);
+        if (!response.ok) {
+            const errorMessage = await response.text();
+            showErrorPopup(errorMessage, response.status);
             videoModal.style.display = 'none';
-        });
+            throw new Error('Failed to fetch video source URL');
+        }
+        setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber);
+    } catch (error) {
+        console.error('Error fetching video:', error);
+        showErrorPopup('An unexpected error occurred.');
+        videoModal.style.display = 'none';
+    }
 }
 
 // Helper Functions
@@ -175,7 +231,7 @@ export function playAnime(malAnimeId, episodeNumber) {
  * @param {number} malAnimeId - The MAL ID of the anime.
  * @param {number} episodeNumber - The episode number.
  */
-function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
+async function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
     if (Hls.isSupported()) {
         const hlsConfig = {
             maxBufferLength: 2.5 * 60,           // 2.5 minutes
@@ -190,9 +246,9 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
         hlsInstance.loadSource(videoSrc);
         hlsInstance.attachMedia(video);
 
-        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, async () => {
             // Check for saved playback time
-            const savedTime = getSavedPlaybackTime(malAnimeId, episodeNumber);
+            const savedTime = await getSavedPlaybackTime(malAnimeId, episodeNumber);
             if (savedTime !== null && savedTime > 0) {
                 video.currentTime = savedTime;
                 console.log(`Resuming playback at ${savedTime} seconds.`);
@@ -233,9 +289,9 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
 
         // Event listener to save playback time periodically
         const saveInterval = 5000; // Save every 5 seconds
-        let saveTimer = setInterval(() => {
+        let saveTimer = setInterval(async () => {
             if (!video.paused && !video.ended) {
-                savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
+                await savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
                 console.log(`Saved playback time: ${video.currentTime} seconds.`);
             }
         }, saveInterval);
@@ -248,25 +304,25 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
             }
         };
 
-        video.addEventListener('pause', () => {
+        video.addEventListener('pause', async () => {
             clearSaveTimer();
-            savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
+            await savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
             console.log(`Video paused. Saved playback time: ${video.currentTime} seconds.`);
         });
 
-        video.addEventListener('ended', () => {
+        video.addEventListener('ended', async () => {
             clearSaveTimer();
-            removePlaybackTime(malAnimeId, episodeNumber);
-            clearLastWatchedEpisode(malAnimeId); // Clear last watched details
+            await removePlaybackTime(malAnimeId, episodeNumber);
+            await clearLastWatchedEpisode(malAnimeId); // Clear last watched details
             removeM3u8Link(malAnimeId, episodeNumber); // Clear saved m3u8 link
             console.log(`Video ended. Removed saved playback time, last watched details, and m3u8 link.`);
         });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
         video.src = videoSrc;
-        video.addEventListener('loadedmetadata', () => {
+        video.addEventListener('loadedmetadata', async () => {
             // Check for saved playback time
-            const savedTime = getSavedPlaybackTime(malAnimeId, episodeNumber);
+            const savedTime = await getSavedPlaybackTime(malAnimeId, episodeNumber);
             if (savedTime !== null && savedTime > 0) {
                 video.currentTime = savedTime;
                 console.log(`Resuming playback at ${savedTime} seconds.`);
@@ -279,9 +335,9 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
 
         // Event listener to save playback time periodically
         const saveInterval = 5000; // Save every 5 seconds
-        let saveTimer = setInterval(() => {
+        let saveTimer = setInterval(async () => {
             if (!video.paused && !video.ended) {
-                savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
+                await savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
                 console.log(`Saved playback time: ${video.currentTime} seconds.`);
             }
         }, saveInterval);
@@ -294,16 +350,16 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
             }
         };
 
-        video.addEventListener('pause', () => {
+        video.addEventListener('pause', async () => {
             clearSaveTimer();
-            savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
+            await savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
             console.log(`Video paused. Saved playback time: ${video.currentTime} seconds.`);
         });
 
-        video.addEventListener('ended', () => {
+        video.addEventListener('ended', async () => {
             clearSaveTimer();
-            removePlaybackTime(malAnimeId, episodeNumber);
-            clearLastWatchedEpisode(malAnimeId); // Clear last watched details
+            await removePlaybackTime(malAnimeId, episodeNumber);
+            await clearLastWatchedEpisode(malAnimeId); // Clear last watched details
             console.log(`Video ended. Removed saved playback time and last watched details.`);
         });
 
@@ -338,8 +394,5 @@ function showErrorPopup(message, status = null) {
 
 // Export utility functions for last watched episode management
 export {
-    getLastWatchedKey,
-    saveLastWatchedEpisode,
-    getLastWatchedEpisode,
-    clearLastWatchedEpisode
+    // Removed localStorage-based functions
 };

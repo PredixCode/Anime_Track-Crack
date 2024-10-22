@@ -2,9 +2,12 @@ import requests
 import logging
 import time
 import json
+from dateutil import parser
+from datetime import datetime, timezone
+import pytz
 from bs4 import BeautifulSoup as bs
 from urllib.parse import urljoin
-from AnimeScrape.VideoDownloader import VideoDownloader
+from .VideoDownloader import VideoDownloader
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -177,7 +180,7 @@ class AnimeScraper:
             WebDriverWait(self.driver, 10).until(
                 EC.presence_of_element_located((By.ID, 'Episode List'))
             )
-            time.sleep(2)
+            time.sleep(5)
 
             # Parse the HTML Content
             soup = bs(self.driver.page_source, 'html.parser')
@@ -203,8 +206,99 @@ class AnimeScraper:
             return unique_filtered_links
         
         except Exception as e:
-            logging.error(f"Failed to extract video source URL using Selenium: {e}")
-            return None
+            logging.error(f"Failed to retrieve episode data: {e}")
+            return {}
+
+        finally:
+            if self.driver:
+                self.driver.quit()
+
+    
+    # TODO: Split into multiple functions
+    def get_episode_data(self, mal_anime_id):
+        """
+        Generic function to retrieve available episodes and next airing date in a single site access.
+
+        Parameters:
+            mal_anime_id (int): The MyAnimeList (MAL) ID of the anime.
+
+        Returns:
+            dict: A dictionary containing 'availableEpisodes' and 'nextAiringDate'.
+        """
+        self.init_driver()
+        try:
+            anilist_id, title_english = self.get_anilist_id_from_mal(mal_anime_id)
+            if not anilist_id:
+                print(f"Failed to retrieve AniList ID for MAL ID {mal_anime_id}")
+                return {}
+
+            # Construct the Anime URL
+            anime_url = f"https://shiroko.co/en/anime/{anilist_id}"
+
+            # Fetch the Anime Page
+            self.driver.get(anime_url)
+
+            css_selector = (
+                '.absolute.bottom-0.-translate-y-4.font-karla.whitespace-nowrap.bg-secondary.shadow.px-2.py-1.'
+                'rounded.text-sm.opacity-0.group-hover\\:-translate-y-9.group-hover\\:opacity-100.'
+                'transition-all.duration-200.ease-out.pointer-events-none'
+            )
+
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located( (By.CSS_SELECTOR, css_selector) )
+            )
+            time.sleep(1)
+
+            # Parse the HTML Content
+            soup = bs(self.driver.page_source, 'html.parser')
+
+            # Extract Available Episodes
+            a_tags = soup.find_all('a', href=True)
+            filtered_links = []
+            for tag in a_tags:
+                href = tag['href']
+                full_url = urljoin(anime_url, href)
+                if str(anilist_id) in full_url and 'watch?id' in full_url:
+                    filtered_links.append(full_url)
+
+            unique_filtered_links = list(set(filtered_links))
+            print(f"Found {len(unique_filtered_links)} episode links containing AniList ID {title_english}")
+
+            # Extract Next Airing Date
+            date_div = soup.find('div', class_='absolute bottom-0 -translate-y-4 font-karla whitespace-nowrap bg-secondary shadow px-2 py-1 rounded text-sm opacity-0 group-hover:-translate-y-9 group-hover:opacity-100 transition-all duration-200 ease-out pointer-events-none')
+
+            if date_div:
+                date_str = date_div.get_text(strip=True)
+                print(f"Scraped date string: {date_str}")
+
+                # Parse the date string using dateutil
+                try:
+                    # Example format: "Sat Oct 26, 2024, 4:00 PM GMT+2"
+                    # Replace ', GMT' with ' GMT' to make it parseable
+                    if ', GMT' in date_str:
+                        date_str_clean = date_str.replace(', GMT', ' GMT')
+                    else:
+                        date_str_clean = date_str.strip()
+
+                    # Parse the date string using dateutil
+                    aware_datetime_gmt2 = parser.parse(date_str_clean)
+                    print(f"Next airing episode (GMT+2): {aware_datetime_gmt2}")
+
+                except Exception as e:
+                    logging.error(f"Error parsing date string '{date_str}': {e}")
+                    aware_datetime_gmt2 = None
+            else:
+                print("Next airing date div not found.")
+                aware_datetime_gmt2 = None
+
+            return {
+                'availableEpisodes': unique_filtered_links,
+                'nextAiringDate': aware_datetime_gmt2.isoformat() if aware_datetime_gmt2 else None
+            }
+
+        except Exception as e:
+            logging.error(f"Failed to retrieve episode data: {e}", exc_info=True)
+            return {}
 
         finally:
             if self.driver:
@@ -213,5 +307,4 @@ class AnimeScraper:
 
 if __name__ == "__main__":
     scraper = AnimeScraper()
-    anime_id, anime_name = scraper.get_anilist_id_from_mal()
-    scraper.scrape_episode(anime_id, anime_name, 10)
+    print(scraper.get_episode_data('56784'))

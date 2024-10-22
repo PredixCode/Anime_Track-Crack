@@ -272,14 +272,3 @@ class VideoDownloader:
         except Exception as e:
             print(f"Error retrieving m3u8 link from JSON: {e}")
             return None
-
-# Example usage: # Structure: {mal_anime_id: [{episode_number: m3u8_link}, ...]}
-
-if __name__ == "__main__":
-    # Configure logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-    logging.basicConfig(level=logging.INFO)
-    base_url = "https://www118.anzeat.pro/streamhls"
-    episode = 19
-    base_m3u8_url = f"{base_url}/4f2c0f603aaa698fd0fd53de4d7cbe4e/ep.{episode}.1727517932.m3u8"
-    downloader = VideoDownloader()
-    downloader.download_video(base_m3u8_url, 'output')
