@@ -3,11 +3,9 @@ import webbrowser
 import threading
 import logging
 import requests
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-
-import redis
-from flask import Flask, Response, request, session, redirect, url_for, stream_with_context, jsonify, render_template
+from flask import Flask, Response, request, session, redirect, url_for, stream_with_context, jsonify, render_template, g
 from flask_session import Session
 from werkzeug.serving import make_server
 
@@ -17,15 +15,23 @@ from AnimeScrape.VideoDownloader import VideoDownloader
 from AnimeScrape.AnimeScraper import AnimeScraper
 
 
-logging.basicConfig(level=logging.DEBUG)
-
 class AnimeController:
+    logging.basicConfig(level=logging.info)
+
     def __init__(self):
         self.scraper = AnimeScraper()
         self.downloader = VideoDownloader()
         self.server = None
         self.app = Flask(__name__, template_folder='templates', static_folder='webapp/static')
         self.token_path = 'src/tokens.json'
+
+        # Configure session
+        self.app.secret_key = '3a4d8f5b6c9e827a0b9d7c8f3e5d1f8a2b4c6d8e9f7b3a1d5e7f9c0b8a1d2c3'
+        self.app.config['SESSION_TYPE'] = 'filesystem' 
+        self.app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=100)
+        Session(self.app)
+
+        self.requesters = {}  # Store Requester objects per user
         self.build_flask()
         threading.Thread(target=self.run_flask).start()
         time.sleep(1)
@@ -49,27 +55,126 @@ class AnimeController:
         
 
     def build_flask(self):
+        @self.app.before_request
+        def load_requester():
+            if 'user_id' in session:
+                user_id = session['user_id']
+                g.user_id = user_id
+                g.requester = self.requesters.get(user_id)
+            else:
+                g.user_id = None
+                g.requester = None
+
         @self.app.route('/')
         def index():
-            tokens_loader = TokenLoader(self.token_path)
+            if 'user_id' not in session:
+                session['user_id'] = os.urandom(8).hex()
+            user_id = session['user_id']
+
+            if 'tokens' not in session:
+                return redirect(url_for('login'))
+
+            tokens = session['tokens']
+            tokens_loader = TokenLoader()
+            tokens_loader.access_token = tokens['access_token']
+            tokens_loader.refresh_token = tokens['refresh_token']
+            tokens_loader.expires_at = tokens['expires_at']
+            tokens_loader.client_id = tokens['client_id']
+            tokens_loader.client_secret = tokens['client_secret']
+
             if not tokens_loader.ensure_valid_tokens():
                 return redirect(url_for('login'))
+
+            # Update tokens in session
+            session['tokens']['access_token'] = tokens_loader.access_token
+            session['tokens']['refresh_token'] = tokens_loader.refresh_token
+            session['tokens']['expires_at'] = tokens_loader.expires_at
+
+            if user_id not in self.requesters:
+                requester = Requester(tokens_loader=tokens_loader)
+                self.requesters[user_id] = requester
             else:
-                self.requester = Requester(tokens_loader=tokens_loader)
-                return render_template('index.html')
+                requester = self.requesters[user_id]
+
+            g.requester = requester
+            return render_template('index.html')
 
         @self.app.route('/login')
         def login():
+            # Step 1: Start the token generation flow
+            token_generator = TokenGenerator()
+            auth_url = token_generator.get_auth_url()
+
+            # Step 2: Redirect the user to the authorization URL
+            session['state'] = token_generator.state
+            session['code_verifier'] = token_generator.code_verifier
+            session['client_id'] = token_generator.client_id
+            session['client_secret'] = token_generator.client_secret
+
+            # Open the authorization URL in the user's browser
+            webbrowser.open(auth_url)
+
+            # Step 3: Wait for the token generator to complete (in a separate thread)
+            token = token_generator.run()  # This will block until the token is generated
+
+            # Step 4: Once the token is obtained, store it in the session
+            if token:
+                session['tokens'] = {
+                    'access_token': token['access_token'],
+                    'refresh_token': token.get('refresh_token'),
+                    'expires_at': datetime.now() + timedelta(seconds=token['expires_in']),
+                    'client_id': token_generator.client_id,
+                    'client_secret': token_generator.client_secret
+                }
+                logging.info(f"Session with token successfully esthablished. Details: {session['tokens']}")
+                return redirect(url_for('index'))
+            else:
+                return "Failed to log in.", 500
+
+        @self.app.route('/callback')
+        def callback():
+            error = request.args.get('error')
+            if error:
+                return f'Error: {error}', 400
+
+            state = request.args.get('state')
+            if state != session.get('state'):
+                return 'Invalid state parameter', 400
+
+            code = request.args.get('code')
+            if not code:
+                return 'Authorization failed.', 400
+
+            code_verifier = session.get('code_verifier')
+            client_id = session.get('client_id')
+            client_secret = session.get('client_secret')
+
             token_generator = TokenGenerator(self.token_path)
-            token_generator.authenticate()
-            return redirect('/')
+            token_generator.code_verifier = code_verifier
+            token_generator.client_id = client_id
+            token_generator.client_secret = client_secret
+
+            token = token_generator.get_token(code)
+
+            session['tokens'] = {
+                'access_token': token['access_token'],
+                'refresh_token': token.get('refresh_token'),
+                'expires_at': datetime.now() + timedelta(seconds=token['expires_in']),
+                'client_id': client_id,
+                'client_secret': client_secret
+            }
+
+            return redirect(url_for('index'))
 
             
         @self.app.route('/animes')
         def animes():
+            requester = g.requester
+            if not requester:
+                return redirect(url_for('index'))
             try:
                 anime_objs_json = {} 
-                for anime in self.requester.anime_repo.get_all_animes():
+                for anime in requester.anime_repo.get_all_animes():
                     anime_objs_json[anime.id] = anime.to_dict()
 
                 return jsonify(anime_objs_json)
@@ -80,8 +185,11 @@ class AnimeController:
 
         @self.app.route('/user_animes')
         def user_animes():
+            requester = g.requester
+            if not requester:
+                return redirect(url_for('index'))
             try:
-                return jsonify(self.requester.anime_repo.user_anime_list)
+                return jsonify(requester.anime_repo.user_anime_list)
 
             except Exception as e:
                 logging.error(f"Error rendering template: {e}")
@@ -89,8 +197,11 @@ class AnimeController:
             
         @self.app.route('/refresh_user_list_status')
         def refresh_user_list_status():
+            requester = g.requester
+            if not requester:
+                return redirect(url_for('index'))
             try:
-                self.requester.get_user_anime_list()
+                requester.get_user_anime_list() # TODO: RENAME REFRESH ANIME
                 return "SUCCESSFUL", 200
 
             except Exception as e:
@@ -99,8 +210,11 @@ class AnimeController:
 
         @self.app.route('/lineage_data')
         def lineage_data():
+            requester = g.requester
+            if not requester:
+                return redirect(url_for('index'))
             try:
-                lineage = self.requester.anime_repo.generate_anime_seasons_liniage()
+                lineage = requester.anime_repo.generate_anime_seasons_liniage()
                 return jsonify(lineage)
             except Exception as e:
                 logging.error(f"Error generating lineage data: {e}")
@@ -235,20 +349,32 @@ class AnimeController:
         @self.app.route('/watch_anime/<int:mal_anime_id>/<int:episode_number>')
         def watch_anime(mal_anime_id, episode_number):
             try:
-                # Get the AniList ID and anime name from MAL ID
-                anime_id, anime_name = self.scraper.get_anilist_id_from_mal(mal_anime_id)
-                # Get the base m3u8 URL (master playlist)
-                video_source_url = self.scraper.get_video_source_url_selenium(anime_id, episode_number)
+                saved_m3u8_link = self.downloader.get_m3u8_from_json(mal_anime_id, episode_number)
+                if saved_m3u8_link:
+                    video_source_url = saved_m3u8_link
+                else:
+                    # Get the AniList ID and anime name from MAL ID
+                    print(f"SCRAPING ANIME: {mal_anime_id} - EP.{episode_number}...")
+                    anime_id, anime_name = self.scraper.get_anilist_id_from_mal(mal_anime_id)
+                    print(f"RECIEVED ANIME ID (AND NAME) TO SCRAPE WITH: ID: {anime_id} ({anime_name}).")
+                    # Get the base m3u8 URL (master playlist)
+                    m3u8_link = self.scraper.get_video_source_url_selenium(anime_id, episode_number)
+                    if not m3u8_link:
+                        return "Video source URL not found", 404
+                    
+                    # Compare episode number to requested episode number
+                    actual_ep = self.scraper.extract_episode_from_video_url(m3u8_link)
+                    if  int(actual_ep) - int(episode_number) != 0:
+                        print(f'FOUND: EP{actual_ep}, BUT EXPECTED: EP{episode_number}')
+                        return f"Requested episode {episode_number} not found, could only find episode: {actual_ep}.\n If the episode found is the previous of the requested episode,\n then the anime is still airing and the episode not available yet", 417
+
+                    # Save the m3u8 URL to JSON to skip scraping for later requests
+                    self.downloader.save_m3u8_to_json(mal_anime_id, episode_number, m3u8_link)
+                    video_source_url = m3u8_link
+
                 if not video_source_url:
-                    return "Video source URL not found", 404
+                    return 'URL parameter is missing.', 400
                 
-                # Compare episode number to requested episode number
-                actual_ep = self.scraper.extract_episode_from_video_url(video_source_url)
-                if  int(actual_ep) - int(episode_number) != 0:
-                    print(f'FOUND: EP{actual_ep}, BUT EXPECTED: EP{episode_number}')
-                    return f"Requested episode {episode_number} not found, could only find episode: {actual_ep}.\n If the episode found is the previous of the requested episode,\n then the anime is still airing and the episode not available yet", 417
-
-
                 # Get the highest resolution m3u8 URL
                 m3u8_url = self.downloader.get_highest_resolution_m3u8_url(video_source_url)
 
@@ -262,7 +388,7 @@ class AnimeController:
                 return Response(modified_m3u8_content, mimetype='application/vnd.apple.mpegurl')
 
             except Exception as e:
-                logging.error(f"Error serving anime {anime_name} Episode {episode_number}: {e}")
+                logging.error(f"Error serving anime scraped anime: {e}")
                 return str(e), 500
             
         @self.app.route('/ts_segment')

@@ -11,7 +11,7 @@ class VideoDownloader:
     A class to download video chunks from a given base M3U8 URL.
     """
 
-    def __init__(self, headers_file="AnimeScrape/headers.json"):
+    def __init__(self, headers_file="AnimeScrape/headers.json",  m3u8_json_file_path='m3u8/episode_links.json'):
         """
         Initialize the VideoDownloader instance.
 
@@ -22,6 +22,11 @@ class VideoDownloader:
         self.session = requests.Session()
         # Load headers from the JSON file
         self.session.headers.update(self._load_headers(headers_file))
+
+        self.json_file_path = m3u8_json_file_path
+        if not os.path.exists(self.json_file_path):
+            with open(self.json_file_path, 'w') as f:
+                json.dump({}, f)
 
     def get_valid_filename(self,name):
         s = str(name).strip().replace(" ", "_")
@@ -217,8 +222,58 @@ class VideoDownloader:
             segment.uri = f"/ts_segment?url={encoded_segment_url}"
 
         return playlist.dumps()
+    
+    def save_m3u8_to_json(self, mal_anime_id, episode_number, m3u8_link):
+        """Save the m3u8 link to a JSON file."""
+        try:
+            # Load the existing data from the JSON file
+            with open(self.json_file_path, 'r') as f:
+                data = json.load(f)
+            
+            # Check if the anime ID already exists in the JSON, if not, create an entry
+            if str(mal_anime_id) not in data:
+                data[str(mal_anime_id)] = []
 
-# Example usage:
+            # Check if the episode is already stored, and update or append it
+            episode_exists = False
+            for episode in data[str(mal_anime_id)]:
+                if episode.get(str(episode_number)):
+                    episode[str(episode_number)] = m3u8_link
+                    episode_exists = True
+                    break
+
+            if not episode_exists:
+                # Append new episode and link
+                data[str(mal_anime_id)].append({str(episode_number): m3u8_link})
+            
+            # Save the updated data back to the JSON file
+            with open(self.json_file_path, 'w') as f:
+                json.dump(data, f, indent=4)
+        
+        except Exception as e:
+            print(f"Error saving m3u8 link to JSON: {e}")
+
+    def get_m3u8_from_json(self, mal_anime_id, episode_number):
+        """Retrieve the m3u8 link from the JSON file."""
+        try:
+            # Load the existing data from the JSON file
+            with open(self.json_file_path, 'r') as f:
+                data = json.load(f)
+            
+            # Find the anime ID and episode number
+            anime_data = data.get(str(mal_anime_id), [])
+            for episode in anime_data:
+                if episode.get(str(episode_number)):
+                    return episode[str(episode_number)]
+            
+            # If not found, return None
+            return None
+        
+        except Exception as e:
+            print(f"Error retrieving m3u8 link from JSON: {e}")
+            return None
+
+# Example usage: # Structure: {mal_anime_id: [{episode_number: m3u8_link}, ...]}
 
 if __name__ == "__main__":
     # Configure logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)

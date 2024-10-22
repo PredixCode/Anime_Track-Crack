@@ -1,5 +1,7 @@
 // player.js
 
+let hlsInstance = null; // Global HLS instance
+
 /**
  * Generates a unique key for storing playback time based on animeId and episodeNumber.
  * @param {number} malAnimeId - The unique ID of the anime.
@@ -19,6 +21,7 @@ function getPlaybackKey(malAnimeId, episodeNumber) {
 function savePlaybackTime(malAnimeId, episodeNumber, currentTime) {
     const key = getPlaybackKey(malAnimeId, episodeNumber);
     localStorage.setItem(key, currentTime);
+    console.log(`Playback time saved: ${currentTime} seconds for Anime ID ${malAnimeId}, Episode ${episodeNumber}`);
 }
 
 /**
@@ -41,6 +44,7 @@ function getSavedPlaybackTime(malAnimeId, episodeNumber) {
 function removePlaybackTime(malAnimeId, episodeNumber) {
     const key = getPlaybackKey(malAnimeId, episodeNumber);
     localStorage.removeItem(key);
+    console.log(`Playback time removed for Anime ID ${malAnimeId}, Episode ${episodeNumber}`);
 }
 
 /**
@@ -64,6 +68,7 @@ function saveLastWatchedEpisode(malAnimeId, episodeNumber) {
         timestamp: Date.now()
     };
     localStorage.setItem(key, JSON.stringify(data));
+    console.log(`Last watched episode saved: Anime ID ${malAnimeId}, Episode ${episodeNumber}`);
 }
 
 /**
@@ -84,12 +89,36 @@ function getLastWatchedEpisode(malAnimeId) {
 function clearLastWatchedEpisode(malAnimeId) {
     const key = getLastWatchedKey(malAnimeId);
     localStorage.removeItem(key);
+    console.log(`Last watched episode cleared for Anime ID ${malAnimeId}`);
 }
 
+/**
+ * Downloads the specified anime episode.
+ * @param {number} malAnimeId - The MAL ID of the anime.
+ * @param {number} episodeNumber - The episode number.
+ * @param {string} animeTitle - The title of the anime.
+ */
+export function downloadAnime(malAnimeId, episodeNumber, animeTitle) { // TODO: export to different .js file
+    const downloadUrl = `/download_anime/${malAnimeId}/${episodeNumber}`;
+    
+    // Create a temporary link element
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `${animeTitle}_episode_${episodeNumber}.ts`; // This may be overridden by server headers
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+/**
+ * Plays the specified anime episode.
+ * @param {number} malAnimeId - The MAL ID of the anime.
+ * @param {number} episodeNumber - The episode number.
+ */
 export function playAnime(malAnimeId, episodeNumber) {
     const video = document.getElementById('video-player');
     const videoModal = document.getElementById('video-modal');
-    const videoSrc = `/watch_anime/${malAnimeId}/${episodeNumber}`;
+    const videoSrc =  `/watch_anime/${malAnimeId}/${episodeNumber}`;
 
     // Save the last watched episode details
     saveLastWatchedEpisode(malAnimeId, episodeNumber);
@@ -112,12 +141,20 @@ export function playAnime(malAnimeId, episodeNumber) {
         document.body.classList.remove('cinema-mode-active');
     }
 
+    // Before initializing a new player, destroy any existing HLS instance
+    if (hlsInstance) {
+        hlsInstance.destroy();
+        hlsInstance = null;
+        console.log('Previous HLS instance destroyed.');
+    }
+
     fetch(videoSrc)
         .then(response => {
             if (!response.ok) {
                 return response.text().then(errorMessage => {
                     showErrorPopup(errorMessage, response.status);
                     videoModal.style.display = 'none';
+                    throw new Error('Failed to fetch video source URL');
                 });
             }
             setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber);
@@ -129,19 +166,15 @@ export function playAnime(malAnimeId, episodeNumber) {
         });
 }
 
-export function downloadAnime(malAnimeId, episodeNumber, animeTitle) {
-    const downloadUrl = `/download_anime/${malAnimeId}/${episodeNumber}`;
-    
-    // Create a temporary link element
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    link.download = `${animeTitle}_episode_${episodeNumber}.ts`; // This may be overridden by server headers
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}
-
 // Helper Functions
+
+/**
+ * Sets up the video player with the provided m3u8 link.
+ * @param {HTMLVideoElement} video - The video element.
+ * @param {string} videoSrc - The m3u8 link.
+ * @param {number} malAnimeId - The MAL ID of the anime.
+ * @param {number} episodeNumber - The episode number.
+ */
 function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
     if (Hls.isSupported()) {
         const hlsConfig = {
@@ -153,39 +186,46 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
             startMaxNotBuffered: 10,
         };
 
-        const hls = new Hls(hlsConfig);
-        hls.loadSource(videoSrc);
-        hls.attachMedia(video);
+        hlsInstance = new Hls(hlsConfig);
+        hlsInstance.loadSource(videoSrc);
+        hlsInstance.attachMedia(video);
 
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
             // Check for saved playback time
             const savedTime = getSavedPlaybackTime(malAnimeId, episodeNumber);
             if (savedTime !== null && savedTime > 0) {
                 video.currentTime = savedTime;
                 console.log(`Resuming playback at ${savedTime} seconds.`);
             }
-            video.play();
+            video.play().then(() => {
+                console.log('Video playback started.');
+            }).catch(error => {
+                console.error('Error playing video:', error);
+                showErrorPopup('Failed to start video playback.');
+            });
         });
 
-
-        hls.on(Hls.Events.BUFFER_FULL, () => {
+        hlsInstance.on(Hls.Events.BUFFER_FULL, () => {
             console.log('Buffer is full.');
         });
 
         // Handle errors
-        hls.on(Hls.Events.ERROR, function (event, data) {
+        hlsInstance.on(Hls.Events.ERROR, function (event, data) {
+            console.error('HLS Error:', data);
             if (data.fatal) {
                 switch (data.type) {
                     case Hls.ErrorTypes.NETWORK_ERROR:
                         console.error('Network error encountered, trying to recover...');
-                        hls.startLoad();
+                        hlsInstance.startLoad();
                         break;
                     case Hls.ErrorTypes.MEDIA_ERROR:
                         console.error('Media error encountered, trying to recover...');
-                        hls.recoverMediaError();
+                        hlsInstance.recoverMediaError();
                         break;
                     default:
-                        hls.destroy();
+                        hlsInstance.destroy();
+                        showErrorPopup('An unrecoverable error occurred.');
+                        removeM3u8Link(malAnimeId, episodeNumber);
                         break;
                 }
             }
@@ -201,19 +241,25 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
         }, saveInterval);
 
         // Clear the interval when video is paused or ended
+        const clearSaveTimer = () => {
+            if (saveTimer) {
+                clearInterval(saveTimer);
+                saveTimer = null;
+            }
+        };
+
         video.addEventListener('pause', () => {
-            clearInterval(saveTimer);
-            saveTimer = null;
+            clearSaveTimer();
             savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
             console.log(`Video paused. Saved playback time: ${video.currentTime} seconds.`);
         });
 
         video.addEventListener('ended', () => {
-            clearInterval(saveTimer);
-            saveTimer = null;
+            clearSaveTimer();
             removePlaybackTime(malAnimeId, episodeNumber);
             clearLastWatchedEpisode(malAnimeId); // Clear last watched details
-            console.log(`Video ended. Removed saved playback time and last watched details.`);
+            removeM3u8Link(malAnimeId, episodeNumber); // Clear saved m3u8 link
+            console.log(`Video ended. Removed saved playback time, last watched details, and m3u8 link.`);
         });
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -225,7 +271,10 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
                 video.currentTime = savedTime;
                 console.log(`Resuming playback at ${savedTime} seconds.`);
             }
-            video.play();
+            video.play().catch(error => {
+                console.error('Error playing video:', error);
+                showErrorPopup('Failed to start video playback.');
+            });
         });
 
         // Event listener to save playback time periodically
@@ -238,16 +287,21 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
         }, saveInterval);
 
         // Clear the interval when video is paused or ended
+        const clearSaveTimer = () => {
+            if (saveTimer) {
+                clearInterval(saveTimer);
+                saveTimer = null;
+            }
+        };
+
         video.addEventListener('pause', () => {
-            clearInterval(saveTimer);
-            saveTimer = null;
+            clearSaveTimer();
             savePlaybackTime(malAnimeId, episodeNumber, video.currentTime);
             console.log(`Video paused. Saved playback time: ${video.currentTime} seconds.`);
         });
 
         video.addEventListener('ended', () => {
-            clearInterval(saveTimer);
-            saveTimer = null;
+            clearSaveTimer();
             removePlaybackTime(malAnimeId, episodeNumber);
             clearLastWatchedEpisode(malAnimeId); // Clear last watched details
             console.log(`Video ended. Removed saved playback time and last watched details.`);
@@ -258,7 +312,17 @@ function setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber) {
     }
 }
 
+/**
+ * Displays an error popup to the user.
+ * @param {string} message - The error message to display.
+ * @param {number} [status=null] - The HTTP status code (optional).
+ */
 function showErrorPopup(message, status = null) {
+    const existingPopup = document.querySelector('.error-popup');
+    if (existingPopup) {
+        existingPopup.remove(); // Remove existing popup if any
+    }
+
     const popup = document.createElement('div');
     popup.className = 'error-popup';
     popup.innerText = message;

@@ -1,7 +1,6 @@
 // parser.js
 import { cachedAnimeData } from './data.js';
-import { buildAnimeElement } from './dom.js';
-import { showActionModal } from './events.js';
+import { buildAnimeElement } from './dom.js';;
 import { getWatchStatus, getAiringStatus } from './utils.js';
 
 export function parseAnimeData(lineageData, selectedWatchStatuses, selectedAiringStatuses) {
@@ -25,7 +24,7 @@ export function parseAnimeData(lineageData, selectedWatchStatuses, selectedAirin
             }
 
             const colorClass = getColorClass(watchStatus);
-            const animeElement = buildAnimeElement(animeObj, colorClass, showActionModal);
+            const animeElement = buildAnimeElement(animeObj, colorClass);
             lineageDiv.appendChild(animeElement);
             hasAnime = true; // Mark that this lineage has at least one anime
         });

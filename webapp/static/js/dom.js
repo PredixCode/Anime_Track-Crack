@@ -1,11 +1,12 @@
 // dom.js
 import { getAiringStatus, getAnimeTitle, createElement } from './utils.js';
-import { checkEpisodes } from './data.js'; // Ensure checkEpisodes is imported
-import { markUnavailableEpisodes, showErrorPopup } from './events.js'; // Ensure these functions are imported
+import { checkEpisodes } from './data.js';
+import { markUnavailableEpisodes, showErrorPopup } from './events.js';
+import { playAnime, downloadAnime } from './player.js';
 
-export function buildAnimeElement(animeObj, colorClass, showActionModal) {
+export function buildAnimeElement(animeObj, colorClass) {
     const element = createElement('div', `anime-element ${colorClass}`);
-    element.id = `anime-${animeObj.id}`; // Prefix to ensure uniqueness if needed
+    element.id = `anime-${animeObj.id}`;
 
     // Anime Image
     const animeImage = createElement('img');
@@ -54,20 +55,72 @@ export function buildAnimeElement(animeObj, colorClass, showActionModal) {
         episodeButton.dataset.episodeNumber = i;
         episodeButton.addEventListener('click', (e) => {
             e.stopPropagation();
-            showActionModal(animeObj.id, i, getAnimeTitle(animeObj));
+            const actionSwitchInput = element.querySelector(`#action-switch-${animeObj.id}`);
+            const actionTextSpan = element.querySelector(`#action-text-${animeObj.id}`);
+            const action = actionSwitchInput.checked ? 'watch' : 'download';
+
+            if (action === 'watch') {
+                playAnime(animeObj.id, i);
+            } else {
+                downloadAnime(animeObj.id, i, getAnimeTitle(animeObj));
+            }
         });
         episodeContainer.appendChild(episodeButton);
     }
 
+    // Action Switch and Refresh Button Container
+    const controlsContainer = createElement('div', 'controls-container');
+
+    // Action Switch Container
+    const actionSwitchContainer = createElement('div', 'action-switch-container');
+
+    // Action Switch Label with Dynamic Text
+    const actionSwitchLabel = createElement('label', 'action-switch-label');
+
+    // Create a span to display the current action
+    const actionTextSpan = createElement('span', 'action-text', 'Watch');
+    actionTextSpan.id = `action-text-${animeObj.id}`; // Unique ID for each anime
+
+    actionSwitchLabel.appendChild(actionTextSpan);
+
+    // Create the switch input
+    const actionSwitchInput = createElement('input', 'action-switch-input');
+    actionSwitchInput.type = 'checkbox';
+    actionSwitchInput.id = `action-switch-${animeObj.id}`;
+    actionSwitchInput.checked = true; // Default to 'Watch'
+
+    // Create the switch slider
+    const actionSwitchSlider = createElement('span', 'action-switch-slider');
+
+    // Create a wrapper for the switch
+    const actionSwitchWrapper = createElement('label', 'action-switch');
+    actionSwitchWrapper.htmlFor = `action-switch-${animeObj.id}`;
+    actionSwitchWrapper.appendChild(actionSwitchInput);
+    actionSwitchWrapper.appendChild(actionSwitchSlider);
+
+    // Append the switch to the container
+    actionSwitchContainer.appendChild(actionSwitchLabel);
+    actionSwitchContainer.appendChild(actionSwitchWrapper);
+
+    // Event Listener to Update the Action Text Based on Switch State
+    actionSwitchInput.addEventListener('change', () => {
+        if (actionSwitchInput.checked) {
+            actionTextSpan.innerText = 'Watch';
+        } else {
+            actionTextSpan.innerText = 'Download';
+        }
+    });
+
+    controlsContainer.appendChild(actionSwitchContainer);
+
     if (animeObj.status !== 'finished_airing') {
         // Refresh Available Episodes Button
         let availableEpisodeRefreshButton = createElement('button', 'episode-button refresh-episodes-button', 'Refresh Available Episodes');
-        // Assign a data attribute to store the animeId
         availableEpisodeRefreshButton.dataset.animeId = animeObj.id;
 
         // Attach event listener to the refresh button
         availableEpisodeRefreshButton.addEventListener('click', async (e) => {
-            e.stopPropagation(); // Prevent triggering parent click events if any
+            e.stopPropagation();
 
             const animeId = e.currentTarget.dataset.animeId;
             try {
@@ -91,9 +144,10 @@ export function buildAnimeElement(animeObj, colorClass, showActionModal) {
             }
         });
 
-        episodeContainer.appendChild(availableEpisodeRefreshButton);
+        controlsContainer.appendChild(availableEpisodeRefreshButton);
     }
-    
+
+    episodeContainer.appendChild(controlsContainer);
     element.appendChild(episodeContainer);
 
     // Toggle Episode List

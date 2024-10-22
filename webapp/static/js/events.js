@@ -29,33 +29,6 @@ export async function addEventListeners() {
 
     // Minimize Video on Scroll
     window.addEventListener('scroll', toggleVideoMinimize);
-
-    // Action Modal Buttons
-    document.getElementById('action-watch-button').addEventListener('click', () => {
-        closeActionModal();
-        playAnime(selectedMalAnimeId, selectedEpisodeNumber);
-    });
-
-    document.getElementById('action-download-button').addEventListener('click', () => {
-        closeActionModal();
-        downloadAnime(selectedMalAnimeId, selectedEpisodeNumber, selectedAnimeTitle);
-    });
-
-    // Close Action Modal
-    document.getElementById('close-action-modal').addEventListener('click', closeActionModal);
-}
-
-export function showActionModal(malAnimeId, episodeNumber, animeTitle) {
-    selectedMalAnimeId = malAnimeId;
-    selectedEpisodeNumber = episodeNumber;
-    selectedAnimeTitle = animeTitle;
-
-    document.getElementById('action-modal-text').innerText = `What do you want to do with Episode ${episodeNumber} of ${animeTitle}?`;
-    document.getElementById('action-modal').style.display = 'block';
-}
-
-function closeActionModal() {
-    document.getElementById('action-modal').style.display = 'none';
 }
 
 function closeVideoModal() {

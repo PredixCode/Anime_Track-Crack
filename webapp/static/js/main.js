@@ -95,7 +95,7 @@ function resumeLastWatchedEpisode() {
 
                 if (timeDiff <= maxTimeDiff) {
                     // Optionally, prompt the user for confirmation
-                    const resume = confirm(`Do you want to resume watching Anime ID ${malAnimeId}, Episode ${episodeNumber}?`);
+                    const resume = confirm(`Do you want to resume watching "${malAnimeId}", Episode ${episodeNumber}?`);
                     if (resume) {
                         playAnime(malAnimeId, episodeNumber);
                         console.log(`Resumed last watched Anime ID ${malAnimeId}, Episode ${episodeNumber}.`);
@@ -115,6 +115,7 @@ function resumeLastWatchedEpisode() {
         }
     }
 }
+
 
 /**
  * Retrieves the last watched episode details from localStorage.
