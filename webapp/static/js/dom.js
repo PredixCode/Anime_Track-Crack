@@ -80,47 +80,6 @@ export function buildAnimeElement(animeObj, colorClass) {
     episodeContainer.appendChild(controlsContainer);
     element.appendChild(episodeContainer);
 
-    // Action Switch Container
-    const actionSwitchContainer = createElement('div', 'action-switch-container');
-
-    // Action Switch Label with Dynamic Text
-    const actionSwitchLabel = createElement('label', 'action-switch-label');
-
-    // Create a span to display the current action
-    const actionTextSpan = createElement('span', 'action-text', 'Watch');
-    actionTextSpan.id = `action-text-${animeObj.id}`; // Unique ID for each anime
-
-    actionSwitchLabel.appendChild(actionTextSpan);
-
-    // Create the switch input
-    const actionSwitchInput = createElement('input', 'action-switch-input');
-    actionSwitchInput.type = 'checkbox';
-    actionSwitchInput.id = `action-switch-${animeObj.id}`;
-    actionSwitchInput.checked = true; // Default to 'Watch'
-
-    // Create the switch slider
-    const actionSwitchSlider = createElement('span', 'action-switch-slider');
-
-    // Create a wrapper for the switch
-    const actionSwitchWrapper = createElement('label', 'action-switch');
-    actionSwitchWrapper.htmlFor = `action-switch-${animeObj.id}`;
-    actionSwitchWrapper.appendChild(actionSwitchInput);
-    actionSwitchWrapper.appendChild(actionSwitchSlider);
-
-    // Append the switch to the container
-    actionSwitchContainer.appendChild(actionSwitchLabel);
-    actionSwitchContainer.appendChild(actionSwitchWrapper);
-
-    // Event Listener to Update the Action Text Based on Switch State
-    actionSwitchInput.addEventListener('change', () => {
-        if (actionSwitchInput.checked) {
-            actionTextSpan.innerText = 'Watch';
-        } else {
-            actionTextSpan.innerText = 'Download';
-        }
-    });
-
-    controlsContainer.appendChild(actionSwitchContainer);
 
     if (animeObj.status !== 'finished_airing') {
         // Refresh Available Episodes Button
@@ -163,6 +122,48 @@ export function buildAnimeElement(animeObj, colorClass) {
         });
 
         controlsContainer.appendChild(availableEpisodeRefreshButton);
+
+    // Action Switch Container
+    const actionSwitchContainer = createElement('div', 'action-switch-container');
+
+    // Action Switch Label with Dynamic Text
+    const actionSwitchLabel = createElement('label', 'action-switch-label');
+
+    // Create a span to display the current action
+    const actionTextSpan = createElement('span', 'action-text', 'Watch');
+    actionTextSpan.id = `action-text-${animeObj.id}`; // Unique ID for each anime
+
+    actionSwitchLabel.appendChild(actionTextSpan);
+
+    // Create the switch input
+    const actionSwitchInput = createElement('input', 'action-switch-input');
+    actionSwitchInput.type = 'checkbox';
+    actionSwitchInput.id = `action-switch-${animeObj.id}`;
+    actionSwitchInput.checked = true; // Default to 'Watch'
+
+    // Create the switch slider
+    const actionSwitchSlider = createElement('span', 'action-switch-slider');
+
+    // Create a wrapper for the switch
+    const actionSwitchWrapper = createElement('label', 'action-switch');
+    actionSwitchWrapper.htmlFor = `action-switch-${animeObj.id}`;
+    actionSwitchWrapper.appendChild(actionSwitchInput);
+    actionSwitchWrapper.appendChild(actionSwitchSlider);
+
+    // Append the switch to the container
+    actionSwitchContainer.appendChild(actionSwitchLabel);
+    actionSwitchContainer.appendChild(actionSwitchWrapper);
+
+    // Event Listener to Update the Action Text Based on Switch State
+    actionSwitchInput.addEventListener('change', () => {
+        if (actionSwitchInput.checked) {
+            actionTextSpan.innerText = 'Watch';
+        } else {
+            actionTextSpan.innerText = 'Download';
+        }
+    });
+
+    controlsContainer.appendChild(actionSwitchContainer);
     }
 
     // Toggle Episode List

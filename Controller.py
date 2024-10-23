@@ -35,8 +35,6 @@ class AnimeController:
         self.requesters = {}  # Store Requester objects per user
         self.build_flask()
         threading.Thread(target=self.run_flask).start()
-        time.sleep(1)
-        webbrowser.open_new('http://127.0.0.1:5000/')
 
 
     def proxy_ts_segment(self, segment_url):
@@ -241,7 +239,7 @@ class AnimeController:
             else:
                 return jsonify({'lastWatched': None}), 200
 
-        @self.app.route('/api/clear_last_watched', methods=['POST'])
+        @self.app.route('/api/clear_last_watched', methods=['POST']) #TODO: Implement in frontend when user decline 'resume last watched alert'.
         def clear_last_watched():
             data = request.get_json()
             malAnimeId = str(data.get('malAnimeId'))
@@ -264,19 +262,6 @@ class AnimeController:
                     malAnimeId = key.replace('last_watched_', '')
                     last_watched[malAnimeId] = session[key]
             return jsonify({'lastWatched': last_watched}), 200
-
-        @self.app.route('/api/get_available_episodes', methods=['GET'])
-        def get_available_episodes():
-            """
-            Retrieves available episodes for each anime from the session.
-            Assumes that 'available_episodes_{malAnimeId}' keys are used.
-            """
-            available_episodes = {}
-            for key in session:
-                if key.startswith('available_episodes_'):
-                    malAnimeId = key.replace('available_episodes_', '')
-                    available_episodes[malAnimeId] = session[key]
-            return jsonify({'availableEpisodes': available_episodes}), 200
         
         @self.app.route('/api/get_episode_data/<int:mal_anime_id>/<int:episode_number>', methods=['GET'])
         def get_episode_data(mal_anime_id, episode_number):
@@ -314,6 +299,35 @@ class AnimeController:
 
             except Exception as e:
                 logging.error(f"Error in get_episode_data API: {e}", exc_info=True)
+                return jsonify({'error': 'Internal Server Error'}), 500
+            
+        from flask import jsonify, session
+
+        @self.app.route('/api/get_all_episode_data', methods=['GET'])
+        def get_all_episode_data():
+            """
+            Retrieves all the session data stored by the controller function.
+
+            Returns:
+                JSON response containing all stored 'availableEpisodes' and 'nextAiringDate' data.
+            """
+            try:
+                all_episode_data = {}
+
+                # Iterate over all session keys to find stored episodes and airing dates
+                for key in session.keys():
+                    if key.startswith("available_episodes_"):
+                        anime_id = key.split("_")[-1]
+                        all_episode_data[f"available_episodes_{anime_id}"] = session[key]
+
+                    elif key.startswith("next_airing_"):
+                        anime_id_episode = "_".join(key.split("_")[2:])
+                        all_episode_data[f"next_airing_{anime_id_episode}"] = session[key]
+
+                return jsonify(all_episode_data), 200
+
+            except Exception as e:
+                logging.error(f"Error in get_all_episode_data API: {e}", exc_info=True)
                 return jsonify({'error': 'Internal Server Error'}), 500
 
             

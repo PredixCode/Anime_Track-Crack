@@ -3,12 +3,13 @@ import { fetchLineageData, fetchAnimes, cachedLineageData, refreshUserData } fro
 import { parseAnimeData } from './parser.js';
 import { addEventListeners, markUnavailableEpisodes } from './events.js';
 import { playAnime } from './player.js';
+import { initializeCountdown } from './dom.js'
 
 window.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([refreshUserData(), fetchLineageData(), fetchAnimes()]);
     loadFiltersFromLocalStorage();
     applyInitialFilters();        
-    await loadAvailableEpisodes(); // Updated function
+    await loadAllEpisodeData(); // Newly added function
     addEventListeners();
     await resumeLastWatchedEpisode(); // Updated function
 });
@@ -44,27 +45,58 @@ function loadFiltersFromLocalStorage() {
 }
 
 /**
- * Loads available episodes for each anime from the server session and updates the UI accordingly.
+ * Loads all episode data from the server session and updates the UI accordingly.
  */
-async function loadAvailableEpisodes() {
+async function loadAllEpisodeData() {
     try {
-        const response = await fetch('/api/get_available_episodes');
+        const response = await fetch('/api/get_all_episode_data');
         if (response.ok) {
             const data = await response.json();
-            // data should be an object with malAnimeId as keys and arrays of unavailable episodes
-            for (const [animeId, availableEpisodes] of Object.entries(data.availableEpisodes)) {
-                if (Array.isArray(availableEpisodes)) {
-                    // Update the UI to mark unavailable episodes based on session data
-                    markUnavailableEpisodes(animeId, availableEpisodes);
+            // Process and update the UI based on all available episode data
+            for (const [key, value] of Object.entries(data)) {
+                if (key.startsWith("available_episodes_")) {
+                    const animeId = key.split("_").pop();
+                    markUnavailableEpisodes(animeId, value);
+                }
+                // Add other data handling logic as needed
+            }
+        } else {
+            console.error('Failed to load all episode data from server.');
+        }
+    } catch (error) {
+        console.error('Error loading all episode data:', error);
+    }
+    await loadNextAiringEpisodeDate();
+}
+
+/**
+ * Loads next episode airing date from the server session and updates the UI accordingly.
+ */
+async function loadNextAiringEpisodeDate() {
+    try {
+        const response = await fetch('/api/get_all_episode_data');
+        if (response.ok) {
+            const data = await response.json();
+            // Process and update the UI based on next airing date data
+            for (const [key, value] of Object.entries(data)) {
+                if (key.startsWith("next_airing_")) {
+                    const animeId = key.split("_")[2];
+                    const episodeNumber = key.split("_")[3];
+                    const nextAiringDate = value;
+                    const animeElement = document.getElementById(`anime-${animeId}`);
+                    if (animeElement) {
+                        initializeCountdown(animeId, nextAiringDate, animeElement);
+                    }
                 }
             }
         } else {
-            console.error('Failed to load available episodes from server.');
+            console.error('Failed to load next airing episode data from server.');
         }
     } catch (error) {
-        console.error('Error loading available episodes:', error);
+        console.error('Error loading next airing episode data:', error);
     }
 }
+
 
 /**
  * Resumes the last watched episode if available by fetching from the server session.
@@ -92,11 +124,11 @@ async function resumeLastWatchedEpisode() {
                             console.log(`Resumed last watched Anime ID ${malAnimeId}, Episode ${episodeNumber}.`);
                         } else {
                             // User chose not to resume; optionally clear the last watched
-                            await clearLastWatchedEpisode(malAnimeId);
+                            await clearLastWatchedEpisode(malAnimeId); // TODO: Implement this function!!!
                             console.log(`User chose not to resume Anime ID ${malAnimeId}, Episode ${episodeNumber}.`);
                         }
                     } else {
-                        await clearLastWatchedEpisode(malAnimeId);
+                        await clearLastWatchedEpisode(malAnimeId); 
                         console.log(`Last watched Anime ID ${malAnimeId} is too old. Cleared from session.`);
                     }
 
