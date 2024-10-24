@@ -2,3 +2,4 @@ src/*.json
 animes/*.json
 AnimeScrape/__pycache__
 __pycache__
+flask_session/
