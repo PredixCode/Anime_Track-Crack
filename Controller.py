@@ -163,6 +163,7 @@ class AnimeController:
                 'client_secret': client_secret
             }
 
+            print('Clients token expires at:', datetime.now() + timedelta(seconds=token['expires_in']))
             return redirect(url_for('index'))
         
         @self.app.route('/api/save_playback_time', methods=['POST'])
@@ -262,6 +263,18 @@ class AnimeController:
                     malAnimeId = key.replace('last_watched_', '')
                     last_watched[malAnimeId] = session[key]
             return jsonify({'lastWatched': last_watched}), 200
+        
+        @self.app.route('/api/clear_all_last_watched', methods=['POST'])
+        def clear_all_last_watched():
+            """
+            Deletes all 'last_watched' entries from the session.
+            """
+            keys_to_remove = [key for key in session.keys() if key.startswith('last_watched_')]
+            
+            for key in keys_to_remove:
+                session.pop(key, None)
+            
+            return jsonify({'message': 'All last watched episodes cleared.'}), 200
         
         @self.app.route('/api/get_episode_data/<int:mal_anime_id>/<int:episode_number>', methods=['GET'])
         def get_episode_data(mal_anime_id, episode_number):
@@ -513,6 +526,7 @@ class AnimeController:
         @self.app.route('/watch_anime/<int:mal_anime_id>/<int:episode_number>')
         def watch_anime(mal_anime_id, episode_number):
             try:
+                resolution = request.args.get('resolution')
                 saved_m3u8_link = self.downloader.get_m3u8_from_json(mal_anime_id, episode_number)
                 if saved_m3u8_link:
                     video_source_url = saved_m3u8_link
@@ -537,10 +551,13 @@ class AnimeController:
                     video_source_url = m3u8_link
 
                 if not video_source_url:
-                    return 'URL parameter is missing.', 400
+                    return 'Video source could not be found.', 404
                 
-                # Get the highest resolution m3u8 URL
-                m3u8_url = self.downloader.get_highest_resolution_m3u8_url(video_source_url)
+                if resolution:
+                    # Fetch m3u8 URL for the specified resolution
+                    m3u8_url = self.downloader.get_m3u8_url_by_resolution(video_source_url, resolution)
+                else:
+                    return 'Resolution parameter is missing.', 400
 
                 # Fetch the m3u8 content
                 m3u8_content = self.downloader.get_m3u8_content(m3u8_url)
@@ -551,10 +568,27 @@ class AnimeController:
                 # Return the m3u8 playlist
                 return Response(modified_m3u8_content, mimetype='application/vnd.apple.mpegurl')
 
+            except ValueError as ve:
+                logging.error(f"Resolution error: {ve}")
+                return str(ve), 400
             except Exception as e:
                 logging.error(f"Error serving anime scraped anime: {e}")
                 return str(e), 500
-            
+        
+        @self.app.route('/api/get_available_resolutions/<int:mal_anime_id>/<int:episode_number>', methods=['GET'])
+        def get_available_resolutions(mal_anime_id, episode_number):
+            try:
+                m3u8_link = self.downloader.get_m3u8_from_json(mal_anime_id, episode_number)
+                if not m3u8_link:
+                    return jsonify({"error": "M3U8 link not found"}), 404
+
+                resolutions = self.downloader.get_available_resolutions(m3u8_link)
+                return jsonify({"resolutions": resolutions}), 200
+
+            except Exception as e:
+                logging.error(f"Error fetching available resolutions: {e}")
+                return jsonify({"error": str(e)}), 500
+
         @self.app.route('/ts_segment')
         def ts_segment():
             # URL of the .ts segment to fetch
@@ -564,15 +598,6 @@ class AnimeController:
 
             # Stream the .ts segment to the client
             return self.proxy_ts_segment(segment_url)
-        
-        @self.app.route('/check_available_episodes/<int:mal_anime_id>')
-        def check_available_episodes(mal_anime_id):
-            try:
-                episodes_available = self.scraper.get_episodes_available(mal_anime_id)
-                print("Episodes available:\n", episodes_available)
-                return episodes_available, 200
-            except Exception as e:
-                return e, 500
 
 
     def run_flask(self):

@@ -1,11 +1,8 @@
 // events.js
 import { applyFilters } from './filters.js';
-import { playAnime, downloadAnime } from './player.js';
-import { refreshUserData, checkEpisodes } from './data.js';
+import { saveLastWatchedEpisode } from './player.js';
+import {  } from './data.js';
 
-let selectedMalAnimeId = null;
-let selectedEpisodeNumber = null;
-let selectedAnimeTitle = null;
 
 export async function addEventListeners() {
     // Apply filters immediately when checkboxes change

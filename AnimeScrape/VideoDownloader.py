@@ -110,48 +110,53 @@ class VideoDownloader:
         except json.JSONDecodeError as e:
             logging.error(f"Error parsing headers JSON file: {e}")
             return {}
+        
 
-    def get_highest_resolution_m3u8_url(self, base_url):
+        
+
+    def get_available_resolutions(self, base_url):
         """
-        Fetches the base M3U8 file and returns the URL for the highest resolution stream.
+        Retrieves all available resolutions from the master M3U8 playlist.
 
-        :return: The URL of the highest resolution M3U8 file.
+        :param base_url: The URL of the master M3U8 file.
+        :return: A list of tuples containing resolution and corresponding M3U8 URL.
         """
         response = self.session.get(base_url)
         response.raise_for_status()
 
-        # Debug: Log the fetched M3U8 content
-        logging.debug("Master M3U8 Content:")
-        logging.debug(response.text)
+        master_playlist = m3u8.loads(response.text)
+        resolutions = []
 
-        playlist = m3u8.loads(response.text)
+        for playlist in master_playlist.playlists:
+            resolution = playlist.stream_info.resolution
+            if resolution:
+                res_str = f"{resolution[1]}p"  # e.g., "720p"
+                res_url = urljoin(base_url.rsplit('/', 1)[0] + '/', playlist.uri)
+                resolutions.append((res_str, res_url))
 
-        # Filter out playlists without resolution info
-        playlists_with_resolution = [
-            p for p in playlist.playlists if p.stream_info.resolution is not None
-        ]
+        return resolutions
 
-        if not playlists_with_resolution:
-            raise Exception("No streams with resolution information found.")
+    def get_m3u8_url_by_resolution(self, base_url, desired_resolution):
+        """
+        Fetches the M3U8 URL for the specified resolution.
 
-        # Sort the streams based on resolution width (higher width = higher resolution)
-        sorted_streams = sorted(
-            playlists_with_resolution,
-            key=lambda stream: stream.stream_info.resolution[0],  # Width
-            reverse=True
-        )
+        :param base_url: The URL of the master M3U8 file.
+        :param desired_resolution: The desired resolution (e.g., "720p").
+        :return: The URL of the M3U8 file for the specified resolution.
+        """
+        response = self.session.get(base_url)
+        response.raise_for_status()
 
-        # Select the highest resolution stream (first in the sorted list)
-        highest_resolution_stream = sorted_streams[0]
+        master_playlist = m3u8.loads(response.text)
 
-        # Use urljoin to construct the URL correctly
-        base_url_directory = base_url.rsplit('/', 1)[0] + '/'
-        m3u8_url = urljoin(base_url_directory, highest_resolution_stream.uri)
+        for playlist in master_playlist.playlists:
+            resolution = playlist.stream_info.resolution
+            if resolution:
+                res_str = f"{resolution[1]}p"
+                if res_str == desired_resolution:
+                    return urljoin(base_url.rsplit('/', 1)[0] + '/', playlist.uri)
 
-        # Debug: Log the selected stream's M3U8 URL
-        logging.debug(f"Selected M3U8 URL: {m3u8_url}")
-
-        return m3u8_url
+        raise ValueError(f"Resolution {desired_resolution} not found.")    
 
     def _download_chunks(self, m3u8_url, output_file):
         """
@@ -206,15 +211,25 @@ class VideoDownloader:
         response.raise_for_status()
         return response.text
 
-    def modify_m3u8_content(self, m3u8_content, m3u8_url):
+    def modify_m3u8_content(self, m3u8_content, m3u8_url, resolution=None):
         """
         Modifies the m3u8 content to adjust the segment URLs to point to our server.
+        Optionally modifies the resolution in the segment filenames.
+
+        :param m3u8_content: Original m3u8 content.
+        :param m3u8_url: URL of the original m3u8.
+        :param resolution: Desired resolution (e.g., '720', '1080'). If None, retains original.
+        :return: Modified m3u8 content as a string.
         """
         playlist = m3u8.loads(m3u8_content)
         base_url = m3u8_url.rsplit('/', 1)[0]
 
         for segment in playlist.segments:
             segment_uri = segment.uri
+            if resolution:
+                # Modify the segment URI to reflect the desired resolution
+                # Example: ep.3.1729183757.720268.ts
+                segment_uri = re.sub(r'\.\d{3}268\.ts$', f'.{resolution}268.ts', segment.uri)
             full_segment_url = urljoin(base_url + '/', segment_uri)
             # Encode the segment URL to be used as a query parameter
             encoded_segment_url = quote(full_segment_url, safe='')
@@ -223,6 +238,8 @@ class VideoDownloader:
 
         return playlist.dumps()
     
+
+    # TODO: Implement database for saving m3u8 scraped links
     def save_m3u8_to_json(self, mal_anime_id, episode_number, m3u8_link):
         """Save the m3u8 link to a JSON file."""
         try:

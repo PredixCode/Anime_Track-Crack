@@ -1,6 +1,7 @@
 // player.js
 
 let hlsInstance = null; // Global HLS instance
+let currentResolution = null; // Track current resolution
 
 /**
  * API Endpoints
@@ -150,6 +151,25 @@ async function clearLastWatchedEpisode(malAnimeId) {
     }
 }
 
+export async function clearAllLastWatchedEpisodes() {
+    try {
+        const response = await fetch('/api/clear_all_last_watched', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (response.ok) {
+            console.log('All last watched episodes cleared.');
+        } else {
+            console.error('Failed to clear all last watched episodes.', response.error);
+        }
+    } catch (error) {
+        console.error('Error clearing all last watched episodes:', error);
+    }
+}
+
 /**
  * Downloads the specified anime episode.
  * @param {number} malAnimeId - The MAL ID of the anime.
@@ -173,10 +193,17 @@ export async function downloadAnime(malAnimeId, episodeNumber, animeTitle) { // 
  * @param {number} malAnimeId - The MAL ID of the anime.
  * @param {number} episodeNumber - The episode number.
  */
-export async function playAnime(malAnimeId, episodeNumber) {
+export async function playAnime(malAnimeId, episodeNumber, resolution = '1080p') {
     const video = document.getElementById('video-player');
     const videoModal = document.getElementById('video-modal');
-    const videoSrc =  `/watch_anime/${malAnimeId}/${episodeNumber}`;
+    let videoSrc =  `/watch_anime/${malAnimeId}/${episodeNumber}`;
+
+    if (resolution) {
+        videoSrc += `?resolution=${resolution}`;
+    }
+
+    // Clear all saved playback times and last watched episodes
+    await clearAllLastWatchedEpisodes();
 
     // Save the last watched episode details
     await saveLastWatchedEpisode(malAnimeId, episodeNumber);
@@ -215,6 +242,8 @@ export async function playAnime(malAnimeId, episodeNumber) {
             throw new Error('Failed to fetch video source URL');
         }
         setupVideoPlayer(video, videoSrc, malAnimeId, episodeNumber);
+        currentResolution = resolution; // Set current resolution
+        await populateResolutionSelector(malAnimeId, episodeNumber, resolution);
     } catch (error) {
         console.error('Error fetching video:', error);
         showErrorPopup('An unexpected error occurred.');
@@ -223,6 +252,77 @@ export async function playAnime(malAnimeId, episodeNumber) {
 }
 
 // Helper Functions
+
+/**
+ * Populates the resolution selector dropdown with available options.
+ * @param {number} malAnimeId - The MAL ID of the anime.
+ * @param {number} episodeNumber - The episode number.
+ * @param {string} selectedResolution - The currently selected resolution.
+ */
+async function populateResolutionSelector(malAnimeId, episodeNumber, selectedResolution) {
+    const resolutionSelector = document.getElementById('resolution');
+    resolutionSelector.innerHTML = '';
+
+    try {
+        const response = await fetch(`/api/get_available_resolutions/${malAnimeId}/${episodeNumber}`);
+        if (response.ok) {
+            const data = await response.json();
+            const resolutions = data.resolutions;
+
+            resolutions.forEach(([resStr, resUrl]) => {
+                if (!Array.from(resolutionSelector.options).some(option => option.value === resStr)) {
+                    const option = document.createElement('option');
+                    option.value = resStr;
+                    option.text = resStr;
+                    if (resStr === selectedResolution) {
+                        option.selected = true;
+                    }
+                    resolutionSelector.appendChild(option);
+                }
+            });
+
+
+            // Add event listener for resolution changes
+            resolutionSelector.addEventListener('change', async (event) => {
+                const newResolution = event.target.value;
+                await switchResolution(malAnimeId, episodeNumber, newResolution);
+            });
+        } else {
+            console.error('Failed to fetch available resolutions.');
+        }
+    } catch (error) {
+        console.error('Error fetching available resolutions:', error);
+    }
+}
+
+/**
+ * Switches the video to the selected resolution.
+ * @param {number} malAnimeId - The MAL ID of the anime.
+ * @param {number} episodeNumber - The episode number.
+ * @param {string} newResolution - The new resolution to switch to.
+ */
+async function switchResolution(malAnimeId, episodeNumber, newResolution) {
+    const video = document.getElementById('video-player');
+    const currentTime = video.currentTime;
+    const isPlaying = !video.paused && !video.ended;
+
+    // Pause the current video
+    video.pause();
+
+    // Play the new resolution
+    await playAnime(malAnimeId, episodeNumber, newResolution);
+
+    // Seek to the previous time
+    video.currentTime = currentTime;
+
+    // Resume playback if it was playing before
+    if (isPlaying) {
+        video.play().catch(error => {
+            console.error('Error resuming video:', error);
+            showErrorPopup('Failed to resume video playback.');
+        });
+    }
+}
 
 /**
  * Sets up the video player with the provided m3u8 link.
@@ -392,7 +492,7 @@ function showErrorPopup(message, status = null) {
     }, 5000);
 }
 
-// Export utility functions for last watched episode management
+
 export {
-    // Removed localStorage-based functions
+    saveLastWatchedEpisode
 };

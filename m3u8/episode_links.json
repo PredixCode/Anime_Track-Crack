@@ -35,11 +35,17 @@
         },
         {
             "2": "https://www032.anzeat.pro/streamhls/91e22e411752c8b91e8cd2c1fb76241a/ep.2.1728578412.m3u8"
+        },
+        {
+            "3": "https://www111.anzeat.pro/streamhls/91e22e411752c8b91e8cd2c1fb76241a/ep.3.1729183757.m3u8"
         }
     ],
     "58488": [
         {
             "13": "https://www047.anzeat.pro/streamhls/003e9881fbe31c973f2c99a3b541044a/ep.13.1729699702.m3u8"
+        },
+        {
+            "6": "https://www031.anzeat.pro/streamhls/003e9881fbe31c973f2c99a3b541044a/ep.6.1724256955.m3u8"
         }
     ]
 }

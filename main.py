@@ -2,7 +2,9 @@ from Controller import AnimeController
 import time, webbrowser
 
 # TODO: Implement refresh not yet airerd anime for if they aired now. Request whole anime object
-# TODO: Move Local Storage implementations to Session!
+# TODO: Implement ThreadManagement
+# TODO: Implement batch download --> ask user, weather to download this ep (,which he clicked on), entire Season or the whole Anime Lineage ()
+# TODO: Implement auto resolution mode depending on bandwidth of the user
 
 
 class AnimeSeasonsTracker:

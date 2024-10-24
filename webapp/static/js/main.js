@@ -2,16 +2,16 @@
 import { fetchLineageData, fetchAnimes, cachedLineageData, refreshUserData } from './data.js';
 import { parseAnimeData } from './parser.js';
 import { addEventListeners, markUnavailableEpisodes } from './events.js';
-import { playAnime } from './player.js';
+import { playAnime, clearAllLastWatchedEpisodes } from './player.js';
 import { initializeCountdown } from './dom.js'
 
 window.addEventListener('DOMContentLoaded', async () => {
     await Promise.all([refreshUserData(), fetchLineageData(), fetchAnimes()]);
     loadFiltersFromLocalStorage();
     applyInitialFilters();        
-    await loadAllEpisodeData(); // Newly added function
+    await loadAllEpisodeData();
     addEventListeners();
-    await resumeLastWatchedEpisode(); // Updated function
+    await resumeLastWatchedEpisode();
 });
 
 function applyInitialFilters() {
@@ -124,11 +124,11 @@ async function resumeLastWatchedEpisode() {
                             console.log(`Resumed last watched Anime ID ${malAnimeId}, Episode ${episodeNumber}.`);
                         } else {
                             // User chose not to resume; optionally clear the last watched
-                            await clearLastWatchedEpisode(malAnimeId); // TODO: Implement this function!!!
+                            await clearAllLastWatchedEpisodes(malAnimeId); // TODO: Implement this function!!!
                             console.log(`User chose not to resume Anime ID ${malAnimeId}, Episode ${episodeNumber}.`);
                         }
                     } else {
-                        await clearLastWatchedEpisode(malAnimeId); 
+                        await clearAllLastWatchedEpisodes(malAnimeId); 
                         console.log(`Last watched Anime ID ${malAnimeId} is too old. Cleared from session.`);
                     }
 

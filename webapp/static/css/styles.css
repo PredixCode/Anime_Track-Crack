@@ -496,6 +496,24 @@ a {
     margin-top: 0;
 }
 
+.resolution-selector {
+    position: absolute;
+    top: 10px;
+    left: 20px;
+    background: rgba(0,0,0,0.5);
+    padding: 5px;
+    border-radius: 5px;
+    z-index: 1000;
+}
+
+.resolution-selector select {
+    color: white;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: 14px;
+}
+
 
 /* Media Queries */
 @media screen and (max-width: 2000px) {
